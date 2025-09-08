@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -29,6 +30,30 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
+// --- NUEVO MIDDLEWARE DE AUTENTICACIÓN ---
+// Esta función se ejecuta antes de cualquier ruta protegida
+function authenticateToken(req, res, next) {
+  const authHeader = req.headers['authorization'];
+  // El token se envía en el formato "Bearer TOKEN"
+  const token = authHeader && authHeader.split(' ')[1];
+
+  // Si no hay token, el usuario no está autorizado
+  if (token == null) {
+    return res.status(401).json({ error: 'Token no proporcionado. Acceso denegado.' });
+  }
+
+  // Verifica el token
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    // Si el token no es válido, no está autorizado
+    if (err) {
+      return res.status(403).json({ error: 'Token inválido o expirado. Acceso denegado.' });
+    }
+    // Si el token es válido, se guarda el usuario en la solicitud
+    req.userId = user.userId;
+    next(); // Pasa al siguiente middleware o a la ruta principal
+  });
+}
+
 // User registration endpoint
 app.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
@@ -46,34 +71,39 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// --- NUEVO ENDPOINT PARA INICIAR SESIÓN ---
+// Login endpoint
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // 1. Buscar al usuario por email en la base de datos
     const userResult = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
     const user = userResult.rows[0];
 
-    // 2. Si el usuario no existe, enviar un error
     if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // 3. Comparar la contraseña ingresada con la contraseña cifrada
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
 
-    // 4. Si las contraseñas no coinciden, enviar un error
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // 5. Si todo es correcto, enviar una respuesta exitosa
-    res.status(200).json({ id: user.id, message: 'Inicio de sesión exitoso' });
+    // Crear un token de sesión
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    res.status(200).json({ id: user.id, token, message: 'Inicio de sesión exitoso' });
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
+});
+
+// --- NUEVO ENDPOINT PROTEGIDO ---
+// Usa el middleware 'authenticateToken' para proteger esta ruta
+app.get('/protected', authenticateToken, (req, res) => {
+  // Si llegas a este punto, significa que el token es válido
+  res.json({ message: `Bienvenido, usuario ${req.userId}! Esta es una ruta protegida. `});
 });
 
 app.listen(port, () => {
