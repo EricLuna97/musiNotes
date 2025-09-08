@@ -46,6 +46,36 @@ app.post('/register', async (req, res) => {
   }
 });
 
+// --- NUEVO ENDPOINT PARA INICIAR SESIÓN ---
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // 1. Buscar al usuario por email en la base de datos
+    const userResult = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
+    const user = userResult.rows[0];
+
+    // 2. Si el usuario no existe, enviar un error
+    if (!user) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // 3. Comparar la contraseña ingresada con la contraseña cifrada
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+
+    // 4. Si las contraseñas no coinciden, enviar un error
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Credenciales inválidas' });
+    }
+
+    // 5. Si todo es correcto, enviar una respuesta exitosa
+    res.status(200).json({ id: user.id, message: 'Inicio de sesión exitoso' });
+  } catch (error) {
+    console.error('Error al iniciar sesión:', error);
+    res.status(500).json({ error: 'Error al iniciar sesión' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
