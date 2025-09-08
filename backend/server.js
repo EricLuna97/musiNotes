@@ -30,34 +30,27 @@ pool.query('SELECT NOW()', (err, res) => {
   }
 });
 
-// --- NUEVO MIDDLEWARE DE AUTENTICACIÓN ---
-// Esta función se ejecuta antes de cualquier ruta protegida
+// Middlewares de autenticación y autorización
 function authenticateToken(req, res, next) {
   const authHeader = req.headers['authorization'];
-  // El token se envía en el formato "Bearer TOKEN"
   const token = authHeader && authHeader.split(' ')[1];
 
-  // Si no hay token, el usuario no está autorizado
   if (token == null) {
     return res.status(401).json({ error: 'Token no proporcionado. Acceso denegado.' });
   }
 
-  // Verifica el token
   jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    // Si el token no es válido, no está autorizado
     if (err) {
       return res.status(403).json({ error: 'Token inválido o expirado. Acceso denegado.' });
     }
-    // Si el token es válido, se guarda el usuario en la solicitud
     req.userId = user.userId;
-    next(); // Pasa al siguiente middleware o a la ruta principal
+    next();
   });
 }
 
-// User registration endpoint
+// Endpoint para el registro de usuarios
 app.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
-
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
@@ -71,10 +64,9 @@ app.post('/register', async (req, res) => {
   }
 });
 
-// Login endpoint
+// Endpoint para el inicio de sesión
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
-
   try {
     const userResult = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
     const user = userResult.rows[0];
@@ -89,9 +81,7 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    // Crear un token de sesión
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-
     res.status(200).json({ id: user.id, token, message: 'Inicio de sesión exitoso' });
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
@@ -99,11 +89,33 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// --- NUEVO ENDPOINT PROTEGIDO ---
-// Usa el middleware 'authenticateToken' para proteger esta ruta
+// Endpoint protegido de prueba
 app.get('/protected', authenticateToken, (req, res) => {
-  // Si llegas a este punto, significa que el token es válido
-  res.json({ message: `Bienvenido, usuario ${req.userId}! Esta es una ruta protegida. `});
+  res.json({ message: `Bienvenido, usuario ${req.userId}! Esta es una ruta protegida.` });
+});
+
+// Endpoint para agregar una canción
+app.post('/songs', authenticateToken, async (req, res) => {
+  const { title, artist, album } = req.body;
+  const userId = req.userId;
+
+  if (!title || !artist) {
+    return res.status(400).json({ error: 'El título y el artista son campos obligatorios.' });
+  }
+
+  try {
+    const result = await pool.query(
+      'INSERT INTO songs (title, artist, album, user_id) VALUES ($1, $2, $3, $4) RETURNING song_id',
+      [title, artist, album, userId]
+    );
+    res.status(201).json({
+      song_id: result.rows[0].song_id,
+      message: 'Canción agregada exitosamente.'
+    });
+  } catch (error) {
+    console.error('Error al agregar la canción:', error);
+    res.status(500).json({ error: 'Error al agregar la canción.' });
+  }
 });
 
 app.listen(port, () => {
