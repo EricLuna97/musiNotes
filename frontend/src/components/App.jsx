@@ -13,6 +13,7 @@ const App = () => {
   const [songTitle, setSongTitle] = useState('');
   const [songArtist, setSongArtist] = useState('');
   const [songAlbum, setSongAlbum] = useState('');
+  const [songGenre, setSongGenre] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
   const [showModal, setShowModal] = useState(false);
   const [songToDelete, setSongToDelete] = useState(null);
@@ -107,7 +108,7 @@ const App = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ title: songTitle, artist: songArtist, album: songAlbum, genre: selectedGenre })
+        body: JSON.stringify({ title: songTitle, artist: songArtist, album: songAlbum, genre: songGenre })
       });
       const data = await response.json();
       if (response.ok) {
@@ -115,6 +116,7 @@ const App = () => {
         setSongTitle('');
         setSongArtist('');
         setSongAlbum('');
+        setSongGenre('');
         setMessage({ text: '¡Canción agregada!', type: 'success' });
       } else {
         setMessage({ text: data.error || 'Error al agregar la canción.', type: 'error' });
@@ -274,6 +276,13 @@ const App = () => {
             placeholder="Álbum (Opcional)"
             value={songAlbum}
             onChange={(e) => setSongAlbum(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
+          />
+           <input
+            type="text"
+            placeholder="Género (Opcional)"
+            value={songGenre}
+            onChange={(e) => setSongGenre(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
           />
           <button
