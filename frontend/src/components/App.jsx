@@ -14,6 +14,8 @@ const App = () => {
   const [songArtist, setSongArtist] = useState('');
   const [songAlbum, setSongAlbum] = useState('');
   const [songGenre, setSongGenre] = useState('');
+  const [songLyrics, setSongLyrics] = useState('');
+  const [songChords, setSongChords] = useState('');
   const [message, setMessage] = useState({ text: '', type: '' });
   const [showModal, setShowModal] = useState(false);
   const [songToDelete, setSongToDelete] = useState(null);
@@ -22,6 +24,8 @@ const App = () => {
   const [editedTitle, setEditedTitle] = useState('');
   const [editedArtist, setEditedArtist] = useState('');
   const [editedAlbum, setEditedAlbum] = useState('');
+  const [editedLyrics, setEditedLyrics] = useState('');
+  const [editedChords, setEditedChords] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
 
@@ -108,7 +112,7 @@ const App = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ title: songTitle, artist: songArtist, album: songAlbum, genre: songGenre })
+        body: JSON.stringify({ title: songTitle, artist: songArtist, album: songAlbum, genre: songGenre, lyrics: songLyrics, chords: songChords })
       });
       const data = await response.json();
       if (response.ok) {
@@ -117,6 +121,8 @@ const App = () => {
         setSongArtist('');
         setSongAlbum('');
         setSongGenre('');
+        setSongLyrics('');
+        setSongChords('');
         setMessage({ text: '¡Canción agregada!', type: 'success' });
       } else {
         setMessage({ text: data.error || 'Error al agregar la canción.', type: 'error' });
@@ -166,6 +172,8 @@ const App = () => {
     setEditedTitle(song.title);
     setEditedArtist(song.artist);
     setEditedAlbum(song.album);
+    setEditedLyrics(song.lyrics);
+    setEditedChords(song.chords);
     setShowEditModal(true);
   };
 
@@ -182,7 +190,7 @@ const App = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ title: editedTitle, artist: editedArtist, album: editedAlbum })
+        body: JSON.stringify({ title: editedTitle, artist: editedArtist, album: editedAlbum, lyrics: editedLyrics, chords: editedChords })
       });
 
       const data = await response.json();
@@ -199,7 +207,6 @@ const App = () => {
     }
   };
   
-  // Componente para ver los detalles de una canción
   const SongDetail = () => {
     const { id } = useParams();
     const [song, setSong] = useState(null);
@@ -283,6 +290,22 @@ const App = () => {
               </div>
             )}
           </div>
+          {song.lyrics && (
+            <div className="mt-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Letra</h3>
+              <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100 text-gray-700 whitespace-pre-wrap">
+                <pre>{song.lyrics}</pre>
+              </div>
+            </div>
+          )}
+          {song.chords && (
+            <div className="mt-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Acordes</h3>
+              <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100 text-gray-700 whitespace-pre-wrap">
+                <pre>{song.chords}</pre>
+              </div>
+            </div>
+          )}
           <button
             onClick={() => navigate('/')}
             className="mt-6 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors"
@@ -380,6 +403,20 @@ const App = () => {
             onChange={(e) => setSongGenre(e.target.value)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition"
           />
+          <textarea
+            placeholder="Letra (Opcional)"
+            value={songLyrics}
+            onChange={(e) => setSongLyrics(e.target.value)}
+            rows="5"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition md:col-span-3"
+          />
+          <textarea
+            placeholder="Acordes (Opcional)"
+            value={songChords}
+            onChange={(e) => setSongChords(e.target.value)}
+            rows="5"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition md:col-span-3"
+          />
           <button
             type="submit"
             className="w-full md:col-span-3 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
@@ -429,6 +466,20 @@ const App = () => {
               placeholder="Álbum"
               value={editedAlbum}
               onChange={(e) => setEditedAlbum(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
+            <textarea
+              placeholder="Letra"
+              value={editedLyrics}
+              onChange={(e) => setEditedLyrics(e.target.value)}
+              rows="5"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+            />
+            <textarea
+              placeholder="Acordes"
+              value={editedChords}
+              onChange={(e) => setEditedChords(e.target.value)}
+              rows="5"
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
             />
             <div className="flex gap-4">
