@@ -118,6 +118,22 @@ app.post('/songs', authenticateToken, async (req, res) => {
   }
 });
 
+// NUEVO: Endpoint para obtener todas las canciones del usuario (MNA 30)
+app.get('/songs', authenticateToken, async (req, res) => {
+  const userId = req.userId;
+
+  try {
+    const query = 'SELECT * FROM songs WHERE user_id = $1 ORDER BY title ASC';
+    const values = [userId];
+    const result = await pool.query(query, values);
+
+    res.status(200).json(result.rows);
+  } catch (error) {
+    console.error('Error al obtener la lista de canciones:', error);
+    res.status(500).json({ error: 'Error interno del servidor.' });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
