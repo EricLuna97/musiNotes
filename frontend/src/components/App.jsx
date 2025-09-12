@@ -11,18 +11,20 @@ const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [songs, setSongs] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newSong, setNewSong] = useState({ title: '', artist: '', album: '' });
+  const [newSong, setNewSong] = useState({ title: '', artist: '', album: '', genre: '' });
   const [showEditModal, setShowEditModal] = useState(false);
   const [songToEdit, setSongToEdit] = useState(null);
   const [editedTitle, setEditedTitle] = useState('');
   const [editedArtist, setEditedArtist] = useState('');
   const [editedAlbum, setEditedAlbum] = useState('');
+  const [editedGenre, setEditedGenre] = useState('');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [songToDelete, setSongToDelete] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [genreQuery, setGenreQuery] = useState('');
 
   // Function to handle fetching songs from the backend
-  const fetchSongs = async (query = '') => {
+  const fetchSongs = async () => {
     try {
       const token = getAuthToken();
       if (!token) {
@@ -30,10 +32,15 @@ const App = () => {
         return;
       }
 
-      let url = `${API_URL}/songs`;
-      if (query) {
-        url = `${API_URL}/songs/search?title=${encodeURIComponent(query)}`;
+      const params = new URLSearchParams();
+      if (searchQuery) {
+        params.append('title', searchQuery);
       }
+      if (genreQuery) {
+        params.append('genre', genreQuery);
+      }
+
+      const url = `${API_URL}/songs/search?${params.toString()}`;
 
       const response = await fetch(url, {
         headers: {
@@ -62,6 +69,17 @@ const App = () => {
       fetchSongs();
     }
   }, []);
+
+  // Use a useEffect to refetch songs when the search queries change
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchSongs();
+    }, 500); // Debounce search to prevent excessive API calls
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery, genreQuery]);
 
   // Handle login form submission
   const handleLogin = async (e) => {
@@ -98,7 +116,7 @@ const App = () => {
         const addedSong = await response.json();
         setSongs([...songs, addedSong]);
         setShowAddModal(false);
-        setNewSong({ title: '', artist: '', album: '' });
+        setNewSong({ title: '', artist: '', album: '', genre: '' });
       } else {
         console.error('Failed to add song.');
       }
@@ -113,6 +131,7 @@ const App = () => {
     setEditedTitle(song.title);
     setEditedArtist(song.artist);
     setEditedAlbum(song.album);
+    setEditedGenre(song.genre);
     setShowEditModal(true);
   };
 
@@ -129,7 +148,8 @@ const App = () => {
         body: JSON.stringify({
           title: editedTitle,
           artist: editedArtist,
-          album: editedAlbum
+          album: editedAlbum,
+          genre: editedGenre
         })
       });
       if (response.ok) {
@@ -181,14 +201,6 @@ const App = () => {
     setShowDeleteModal(false);
     setSongToDelete(null);
   };
-
-  // Handle search functionality
-  const handleSearch = async (e) => {
-    const query = e.target.value;
-    setSearchQuery(query);
-    fetchSongs(query);
-  };
-
 
   if (!isLoggedIn) {
     return (
@@ -257,13 +269,20 @@ const App = () => {
         </div>
       </header>
 
-      {/* Search Input */}
-      <div className="mb-6">
+      {/* Search Inputs */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
         <input
           type="text"
           placeholder="Buscar por título..."
           value={searchQuery}
-          onChange={handleSearch}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+          type="text"
+          placeholder="Buscar por género..."
+          value={genreQuery}
+          onChange={(e) => setGenreQuery(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
@@ -275,8 +294,11 @@ const App = () => {
             <p className="text-gray-600 mb-1">
               **Artista:** {song.artist}
             </p>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 mb-1">
               **Álbum:** {song.album}
+            </p>
+            <p className="text-gray-600 mb-4">
+              **Género:** {song.genre}
             </p>
             <div className="flex justify-end space-x-2">
               <button
@@ -322,12 +344,21 @@ const App = () => {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <input
                   type="text"
                   placeholder="Álbum"
                   value={newSong.album}
                   onChange={(e) => setNewSong({ ...newSong, album: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
+              <div className="mb-6">
+                <input
+                  type="text"
+                  placeholder="Género"
+                  value={newSong.genre}
+                  onChange={(e) => setNewSong({ ...newSong, genre: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
@@ -377,12 +408,21 @@ const App = () => {
                   required
                 />
               </div>
-              <div className="mb-6">
+              <div className="mb-4">
                 <input
                   type="text"
                   placeholder="Álbum"
                   value={editedAlbum}
                   onChange={(e) => setEditedAlbum(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="mb-6">
+                <input
+                  type="text"
+                  placeholder="Género"
+                  value={editedGenre}
+                  onChange={(e) => setEditedGenre(e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
