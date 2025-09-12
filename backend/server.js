@@ -5,135 +5,141 @@ const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
 require('dotenv').config();
 
+// Se requiere instalar jsonwebtoken: npm install jsonwebtoken
+// Esto es para la autenticación
+const SECRET_KEY = process.env.JWT_SECRET || 'your-secret-key-that-should-be-more-secure';
+
 const app = express();
 const port = 3001;
 
-// Middlewares
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Database configuration
+// Configuración de la base de datos
 const pool = new Pool({
   user: process.env.DB_USER,
   host: process.env.DB_HOST,
-  database: process.env.DB_DATABASE,
+  database: process.env.DB_NAME,
   password: process.env.DB_PASSWORD,
   port: process.env.DB_PORT,
 });
 
-// Test database connection
-pool.query('SELECT NOW()', (err, res) => {
-  if (err) {
-    console.error('Error al conectar a la base de datos', err.stack);
-  } else {
-    console.log('Conexión a la base de datos exitosa');
-  }
-});
-
-// Middlewares de autenticación y autorización
-function authenticateToken(req, res, next) {
+// Middleware para autenticar el token
+const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
   if (token == null) {
-    return res.status(401).json({ error: 'Token no proporcionado. Acceso denegado.' });
+    return res.status(401).send('Token no proporcionado.');
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+  jwt.verify(token, SECRET_KEY, (err, user) => {
     if (err) {
-      return res.status(403).json({ error: 'Token inválido o expirado. Acceso denegado.' });
+      return res.status(403).send('Token no válido o expirado.');
     }
-    req.userId = user.userId;
+    req.user = user;
     next();
   });
-}
+};
 
-// Endpoint para el registro de usuarios
-app.post('/register', async (req, res) => {
-  const { username, email, password } = req.body;
-  try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING user_id',
-      [username, email, hashedPassword]
-    );
-    res.status(201).json({ user_id: result.rows[0].user_id, message: 'Usuario registrado exitosamente.' });
-  } catch (error) {
-    console.error('Error al registrar usuario:', error);
-    res.status(500).json({ error: 'Error al registrar usuario' });
-  }
-});
-
-// Endpoint para el inicio de sesión
+// Endpoint de login
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
-    const userResult = await pool.query('SELECT user_id, password_hash FROM users WHERE email = $1', [email]);
-    const user = userResult.rows[0];
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = result.rows[0];
 
-    if (!user) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
+    if (user && await bcrypt.compare(password, user.password_hash)) {
+      const accessToken = jwt.sign({ user_id: user.user_id }, SECRET_KEY, { expiresIn: '1h' });
+      res.json({ token: accessToken, user_id: user.user_id });
+    } else {
+      res.status(401).send('Credenciales inválidas.');
     }
-
-    const passwordMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!passwordMatch) {
-      return res.status(401).json({ error: 'Credenciales inválidas' });
-    }
-
-    const token = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.status(200).json({ user_id: user.user_id, token, message: 'Inicio de sesión exitoso' });
   } catch (error) {
-    console.error('Error al iniciar sesión:', error);
-    res.status(500).json({ error: 'Error al iniciar sesión' });
-  }
-});
-
-// Endpoint protegido de prueba
-app.get('/protected', authenticateToken, (req, res) => {
-  res.json({ message: `Bienvenido, usuario ${req.userId}! Esta es una ruta protegida.` });
-});
-
-// Endpoint para agregar una canción
-app.post('/songs', authenticateToken, async (req, res) => {
-  const { title, artist, album } = req.body;
-  const userId = req.userId;
-
-  if (!title || !artist) {
-    return res.status(400).json({ error: 'El título y el artista son campos obligatorios.' });
-  }
-
-  try {
-    const result = await pool.query(
-      'INSERT INTO songs (title, artist, album, user_id) VALUES ($1, $2, $3, $4) RETURNING song_id',
-      [title, artist, album, userId]
-    );
-    res.status(201).json({
-      song_id: result.rows[0].song_id,
-      message: 'Canción agregada exitosamente.'
-    });
-  } catch (error) {
-    console.error('Error al agregar la canción:', error);
-    res.status(500).json({ error: 'Error al agregar la canción.' });
+    console.error('Error de login:', error);
+    res.status(500).send('Error del servidor');
   }
 });
 
 // Endpoint para obtener todas las canciones del usuario
 app.get('/songs', authenticateToken, async (req, res) => {
-  const userId = req.userId;
-
   try {
-    const query = 'SELECT * FROM songs WHERE user_id = $1 ORDER BY title ASC';
-    const values = [userId];
-    const result = await pool.query(query, values);
-
-    res.status(200).json(result.rows);
+    const result = await pool.query('SELECT * FROM songs WHERE user_id = $1 ORDER BY created_at DESC', [req.user.user_id]);
+    res.json(result.rows);
   } catch (error) {
-    console.error('Error al obtener la lista de canciones:', error);
-    res.status(500).json({ error: 'Error interno del servidor.' });
+    console.error('Error al obtener canciones:', error);
+    res.status(500).send('Error del servidor');
   }
 });
 
+// Endpoint para agregar una nueva canción
+app.post('/songs', authenticateToken, async (req, res) => {
+  const { title, artist, album } = req.body;
+  try {
+    const newSong = await pool.query(
+      "INSERT INTO songs (title, artist, album, user_id) VALUES ($1, $2, $3, $4) RETURNING *",
+      [title, artist, album, req.user.user_id]
+    );
+    res.status(201).json(newSong.rows[0]);
+  } catch (error) {
+    console.error('Error al agregar canción:', error);
+    res.status(500).send('Error del servidor');
+  }
+});
+
+// Endpoint para actualizar una canción
+app.put('/songs/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { title, artist, album } = req.body;
+  
+  try {
+    // Verificar que la canción pertenezca al usuario autenticado
+    const checkSong = await pool.query('SELECT user_id FROM songs WHERE song_id = $1', [id]);
+    if (checkSong.rows.length === 0) {
+      return res.status(404).send('Canción no encontrada.');
+    }
+    if (checkSong.rows[0].user_id !== req.user.user_id) {
+      return res.status(403).send('No tienes permiso para editar esta canción.');
+    }
+
+    // Actualizar la canción
+    const result = await pool.query(
+      "UPDATE songs SET title = $1, artist = $2, album = $3 WHERE song_id = $4 RETURNING *",
+      [title, artist, album, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).send('Canción no encontrada.');
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error al actualizar canción:', error);
+    res.status(500).send('Error del servidor');
+  }
+});
+
+// Endpoint de registro
+app.post('/auth/register', async (req, res) => {
+  const { username, email, password } = req.body;
+
+  try {
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    const newUser = await pool.query(
+      "INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, created_at",
+      [username, email, password_hash]
+    );
+    res.status(201).json(newUser.rows[0]);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Error del servidor");
+  }
+});
+
+// Iniciar el servidor
 app.listen(port, () => {
   console.log(`Servidor escuchando en http://localhost:${port}`);
 });
