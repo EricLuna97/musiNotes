@@ -54,10 +54,10 @@ app.post('/register', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     const result = await pool.query(
-      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id',
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING user_id',
       [username, email, hashedPassword]
     );
-    res.status(201).json({ id: result.rows[0].id, message: 'Usuario registrado exitosamente.' });
+    res.status(201).json({ user_id: result.rows[0].user_id, message: 'Usuario registrado exitosamente.' });
   } catch (error) {
     console.error('Error al registrar usuario:', error);
     res.status(500).json({ error: 'Error al registrar usuario' });
@@ -68,7 +68,7 @@ app.post('/register', async (req, res) => {
 app.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
-    const userResult = await pool.query('SELECT id, password_hash FROM users WHERE email = $1', [email]);
+    const userResult = await pool.query('SELECT user_id, password_hash FROM users WHERE email = $1', [email]);
     const user = userResult.rows[0];
 
     if (!user) {
@@ -81,8 +81,8 @@ app.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciales inválidas' });
     }
 
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '1h' });
-    res.status(200).json({ id: user.id, token, message: 'Inicio de sesión exitoso' });
+    const token = jwt.sign({ userId: user.user_id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+    res.status(200).json({ user_id: user.user_id, token, message: 'Inicio de sesión exitoso' });
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
     res.status(500).json({ error: 'Error al iniciar sesión' });
@@ -118,7 +118,7 @@ app.post('/songs', authenticateToken, async (req, res) => {
   }
 });
 
-// NUEVO: Endpoint para obtener todas las canciones del usuario (MNA 30)
+// Endpoint para obtener todas las canciones del usuario
 app.get('/songs', authenticateToken, async (req, res) => {
   const userId = req.userId;
 
