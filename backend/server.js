@@ -120,6 +120,35 @@ app.put('/songs/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Endpoint para eliminar una canción
+app.delete('/songs/:id', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    // Verificar que la canción pertenezca al usuario autenticado
+    const checkSong = await pool.query('SELECT user_id FROM songs WHERE song_id = $1', [id]);
+    if (checkSong.rows.length === 0) {
+      return res.status(404).send('Canción no encontrada.');
+    }
+    if (checkSong.rows[0].user_id !== req.user.user_id) {
+      return res.status(403).send('No tienes permiso para eliminar esta canción.');
+    }
+
+    // Eliminar la canción
+    const result = await pool.query("DELETE FROM songs WHERE song_id = $1", [id]);
+
+    // Verificar si se eliminó alguna fila
+    if (result.rowCount === 0) {
+      return res.status(404).send('Canción no encontrada.');
+    }
+
+    res.status(204).send(); // 204 No Content para indicar eliminación exitosa
+  } catch (error) {
+    console.error('Error al eliminar canción:', error);
+    res.status(500).send('Error del servidor');
+  }
+});
+
 // Endpoint de registro
 app.post('/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
