@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useNavigate, useParams } from 'react-router-dom';
 
 const apiBaseUrl = 'http://localhost:3001';
 
@@ -198,7 +198,102 @@ const App = () => {
       setMessage({ text: 'Error de conexión. Inténtalo de nuevo.', type: 'error' });
     }
   };
+  
+  // Componente para ver los detalles de una canción
+  const SongDetail = () => {
+    const { id } = useParams();
+    const [song, setSong] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const navigate = useNavigate();
+    
+    useEffect(() => {
+      const fetchSongDetail = async () => {
+        try {
+          const response = await fetch(`${apiBaseUrl}/songs/${id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          const data = await response.json();
+          if (response.ok) {
+            setSong(data);
+          } else {
+            setError(data.error || 'No se pudo cargar la canción.');
+          }
+        } catch (err) {
+          setError('Error de conexión. Inténtalo de nuevo.');
+        } finally {
+          setLoading(false);
+        }
+      };
 
+      if (token && id) {
+        fetchSongDetail();
+      }
+    }, [id, token]);
+
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center min-h-screen">
+          <p className="text-gray-500">Cargando detalles de la canción...</p>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center text-red-500 mt-20">
+          <h2 className="text-2xl font-bold mb-4">Error</h2>
+          <p>{error}</p>
+          <Link to="/" className="text-blue-500 hover:underline mt-4 block">Volver a la lista</Link>
+        </div>
+      );
+    }
+    
+    if (!song) {
+        return (
+            <div className="text-center text-gray-500 mt-20">
+                <h2 className="text-2xl font-bold mb-4">Canción no encontrada</h2>
+                <p>La canción que buscas no existe.</p>
+                <Link to="/" className="text-blue-500 hover:underline mt-4 block">Volver a la lista</Link>
+            </div>
+        );
+    }
+
+    return (
+      <div className="flex flex-col gap-8 w-full max-w-4xl">
+        <section className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">Detalles de la Canción</h2>
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+              <div className="font-bold text-lg text-gray-800">Título: <span className="font-normal">{song.title}</span></div>
+            </div>
+            <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+              <div className="font-bold text-lg text-gray-800">Artista: <span className="font-normal">{song.artist}</span></div>
+            </div>
+            {song.album && (
+              <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+                <div className="font-bold text-lg text-gray-800">Álbum: <span className="font-normal">{song.album}</span></div>
+              </div>
+            )}
+            {song.genre && (
+              <div className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
+                <div className="font-bold text-lg text-gray-800">Género: <span className="font-normal">{song.genre}</span></div>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="mt-6 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg transition-colors"
+          >
+            Volver
+          </button>
+        </section>
+      </div>
+    );
+  };
+  
   const Home = () => (
     <div className="flex flex-col gap-8 w-full max-w-4xl">
       <section className="bg-white p-6 rounded-xl shadow-lg border border-gray-200">
@@ -229,7 +324,7 @@ const App = () => {
             {songs.map(song => (
               <li key={song.song_id} className="flex justify-between items-center bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-100">
                 <div className="flex-1">
-                  <div className="font-bold text-lg text-gray-800">{song.title}</div>
+                  <Link to={`/songs/${song.song_id}`} className="font-bold text-lg text-gray-800 hover:text-blue-600 transition-colors">{song.title}</Link>
                   <div className="text-sm text-gray-600">
                     {song.artist}{song.album && <span className="ml-2 text-gray-400">({song.album})</span>}
                   </div>
@@ -420,6 +515,7 @@ const App = () => {
             <Route path="/" element={<Home />} />
             <Route path="/add" element={<AddSong />} />
             <Route path="/edit/:id" element={<EditSong />} />
+            <Route path="/songs/:id" element={<SongDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
