@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-const API_URL = 'http://localhost:3001'; // Make sure this matches your backend server URL
+const API_URL = 'http://localhost:3001';
 
 // Utility function to get JWT token from localStorage
 const getAuthToken = () => {
@@ -21,7 +21,8 @@ const App = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [songToDelete, setSongToDelete] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [genreQuery, setGenreQuery] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState('');
+  const [uniqueGenres, setUniqueGenres] = useState([]);
 
   // Function to handle fetching songs from the backend
   const fetchSongs = async () => {
@@ -36,8 +37,8 @@ const App = () => {
       if (searchQuery) {
         params.append('title', searchQuery);
       }
-      if (genreQuery) {
-        params.append('genre', genreQuery);
+      if (selectedGenre) {
+        params.append('genre', selectedGenre);
       }
 
       const url = `${API_URL}/songs/search?${params.toString()}`;
@@ -79,7 +80,13 @@ const App = () => {
     return () => {
       clearTimeout(handler);
     };
-  }, [searchQuery, genreQuery]);
+  }, [searchQuery, selectedGenre]);
+
+  // Use a useEffect to get unique genres from the songs data
+  useEffect(() => {
+    const genres = Array.from(new Set(songs.map(song => song.genre)));
+    setUniqueGenres(genres);
+  }, [songs]);
 
   // Handle login form submission
   const handleLogin = async (e) => {
@@ -237,13 +244,13 @@ const App = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <header className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Mis Canciones</h1>
+        <h1 className="text-3xl font-bold text-gray-800">Mi Cancionero</h1>
         <div className="flex items-center space-x-4">
           <button
             onClick={handleLogout}
             className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition duration-300"
           >
-            Logout
+            Cerrar Sesión
           </button>
           <button
             onClick={() => setShowAddModal(true)}
@@ -269,7 +276,7 @@ const App = () => {
         </div>
       </header>
 
-      {/* Search Inputs */}
+      {/* Search and Filter Inputs */}
       <div className="flex flex-col md:flex-row gap-4 mb-6">
         <input
           type="text"
@@ -278,13 +285,16 @@ const App = () => {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
-        <input
-          type="text"
-          placeholder="Buscar por género..."
-          value={genreQuery}
-          onChange={(e) => setGenreQuery(e.target.value)}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+        <select
+          value={selectedGenre}
+          onChange={(e) => setSelectedGenre(e.target.value)}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+        >
+          <option value="">Todos los géneros</option>
+          {uniqueGenres.map(genre => (
+            <option key={genre} value={genre}>{genre}</option>
+          ))}
+        </select>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
