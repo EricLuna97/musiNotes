@@ -149,6 +149,31 @@ app.delete('/songs/:id', authenticateToken, async (req, res) => {
   }
 });
 
+// Nuevo endpoint para buscar canciones por título
+app.get('/songs/search', authenticateToken, async (req, res) => {
+  const { title } = req.query;
+
+  try {
+    // Si no se proporciona un título, devolver todas las canciones del usuario
+    if (!title) {
+      const allSongs = await pool.query('SELECT * FROM songs WHERE user_id = $1 ORDER BY created_at DESC', [req.user.user_id]);
+      return res.json(allSongs.rows);
+    }
+
+    // Usar LIKE con comodines para buscar títulos que contengan la cadena de búsqueda
+    const searchQuery = `%${title}%`;
+    const result = await pool.query(
+      "SELECT * FROM songs WHERE user_id = $1 AND title ILIKE $2 ORDER BY created_at DESC",
+      [req.user.user_id, searchQuery]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error al buscar canciones:', error);
+    res.status(500).send('Error del servidor');
+  }
+});
+
 // Endpoint de registro
 app.post('/auth/register', async (req, res) => {
   const { username, email, password } = req.body;
