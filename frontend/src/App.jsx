@@ -195,6 +195,12 @@ const App = () => {
                             {song.genre && <p className="text-gray-600 dark:text-gray-300">Género: {song.genre}</p>}
                             <div className="flex justify-end mt-4 space-x-2">
                                 <button
+                                    onClick={() => { setView('view'); setCurrentSong(song); }}
+                                    className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm hover:bg-purple-600 transition-colors duration-300"
+                                >
+                                    Ver
+                                </button>
+                                <button
                                     onClick={() => { setView('edit'); setCurrentSong(song); }}
                                     className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm hover:bg-blue-600 transition-colors duration-300"
                                 >
@@ -233,7 +239,6 @@ const App = () => {
             }
             const songData = { title, artist, album, genre, lyrics, chords };
             saveSong(songData, currentSong?.id);
-            setView('list');
         };
 
         return (
@@ -277,6 +282,71 @@ const App = () => {
         );
     };
 
+    // New component for individual song view
+    const SongView = () => {
+        if (!currentSong) {
+            return (
+                <div className="text-center text-gray-500 mt-8">
+                    No se seleccionó ninguna canción.
+                    <button
+                        onClick={() => setView('list')}
+                        className="mt-4 px-6 py-3 bg-purple-600 text-white rounded-full font-bold hover:bg-purple-700 transition-colors duration-300"
+                    >
+                        Volver a la lista
+                    </button>
+                </div>
+            );
+        }
+
+        const formatText = (text) => {
+            return text ? text.split('\n').map((line, index) => <p key={index}>{line}</p>) : null;
+        };
+
+        return (
+            <div className="w-full max-w-4xl p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-colors duration-300">
+                <div className="flex justify-between items-start mb-6">
+                    <button
+                        onClick={() => setView('list')}
+                        className="bg-gray-500 text-white px-4 py-2 rounded-full font-bold hover:bg-gray-600 transition-colors duration-300"
+                    >
+                        &lt; Volver
+                    </button>
+                    <div className="text-right">
+                        <h1 className="text-4xl font-bold">{currentSong.title}</h1>
+                        <h2 className="text-xl text-gray-600 dark:text-gray-300">{currentSong.artist}</h2>
+                        {currentSong.album && <p className="text-sm text-gray-500 dark:text-gray-400">Álbum: {currentSong.album}</p>}
+                        {currentSong.genre && <p className="text-sm text-gray-500 dark:text-gray-400">Género: {currentSong.genre}</p>}
+                    </div>
+                </div>
+
+                <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                    <h3 className="text-2xl font-semibold mb-2">Letra</h3>
+                    <div className="whitespace-pre-wrap text-lg text-gray-800 dark:text-gray-200">{formatText(currentSong.lyrics)}</div>
+                </div>
+
+                <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-xl">
+                    <h3 className="text-2xl font-semibold mb-2">Acordes</h3>
+                    <div className="whitespace-pre-wrap text-lg text-gray-800 dark:text-gray-200">{formatText(currentSong.chords)}</div>
+                </div>
+            </div>
+        );
+    };
+
+    const renderView = () => {
+        switch (view) {
+            case 'list':
+                return <SongList />;
+            case 'add':
+                return <SongForm />;
+            case 'edit':
+                return <SongForm />;
+            case 'view':
+                return <SongView />;
+            default:
+                return <SongList />;
+        }
+    };
+
     return (
         <div className="flex flex-col items-center w-full min-h-screen p-4 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans">
             <Modal {...modal} onClose={() => setModal({ ...modal, show: false })} />
@@ -285,7 +355,7 @@ const App = () => {
                     Tu ID de usuario: {userId}
                 </div>
             )}
-            {view === 'list' ? <SongList /> : <SongForm />}
+            {renderView()}
         </div>
     );
 };
