@@ -1,363 +1,330 @@
 import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'firebase/firestore';
 
-// Global variables provided by the environment
-const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-const authToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+// API base URL
+const API_BASE = 'http://localhost:3001/api';
 
-// The main App component
+// Main App Component
 const App = () => {
-    // State variables for the app's data and UI
-    const [songs, setSongs] = useState([]);
-    const [view, setView] = useState('list');
-    const [currentSong, setCurrentSong] = useState(null);
-    const [db, setDb] = useState(null);
-    const [auth, setAuth] = useState(null);
-    const [userId, setUserId] = useState(null);
-    const [isAuthReady, setIsAuthReady] = useState(false);
-    const [modal, setModal] = useState({ show: false, message: '', isConfirm: false, onConfirm: () => {} });
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('token'));
+  const [songs, setSongs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [isLogin, setIsLogin] = useState(true);
+  const [authForm, setAuthForm] = useState({ username: '', email: '', password: '' });
+  const [songForm, setSongForm] = useState({
+    title: '', artist: '', album: '', genre: '', lyrics: '', chords: ''
+  });
+  const [editingSong, setEditingSong] = useState(null);
 
-    // Modal component
-    const Modal = ({ show, message, isConfirm, onConfirm, onClose }) => {
-        if (!show) return null;
+  // Check if user is logged in on mount
+  useEffect(() => {
+    if (token) {
+      fetchSongs();
+    }
+  }, [token]);
 
-        return (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-300 ease-in-out">
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg w-full max-w-sm transform transition-transform duration-300 ease-in-out scale-100 opacity-100">
-                    <h2 className="text-xl font-bold mb-4">{message}</h2>
-                    <div className="flex justify-end space-x-4">
-                        <button onClick={onClose} className="w-full py-2 bg-purple-600 text-white rounded-full hover:bg-purple-700 transition-colors duration-300">
-                            Cerrar
-                        </button>
-                        {isConfirm && (
-                            <button onClick={onConfirm} className="w-full py-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-300">
-                                Eliminar
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-        );
+  // API calls
+  const apiCall = async (endpoint, options = {}) => {
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      ...options,
     };
+    const response = await fetch(`${API_BASE}${endpoint}`, config);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'API error');
+    return data;
+  };
 
-    // Function to show the modal
-    const showModal = (message, isConfirm = false, onConfirm = () => {}) => {
-        setModal({
-            show: true,
-            message,
-            isConfirm,
-            onConfirm: () => {
-                onConfirm();
-                setModal({ ...modal, show: false });
-            },
-            onClose: () => {
-                setModal({ ...modal, show: false });
-            }
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      const { token: newToken, user: userData } = await apiCall(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(authForm),
+      });
+      setToken(newToken);
+      setUser(userData);
+      localStorage.setItem('token', newToken);
+      setAuthForm({ username: '', email: '', password: '' });
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchSongs = async () => {
+    try {
+      const data = await apiCall('/songs');
+      setSongs(data);
+    } catch (error) {
+      console.error('Error fetching songs:', error);
+    }
+  };
+
+  const handleSongSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (editingSong) {
+        await apiCall(`/songs/${editingSong.song_id}`, {
+          method: 'PUT',
+          body: JSON.stringify(songForm),
         });
-    };
-
-    // Firebase initialization and authentication
-    useEffect(() => {
-        const initFirebase = async () => {
-            try {
-                const firebaseApp = initializeApp(firebaseConfig);
-                const authInstance = getAuth(firebaseApp);
-                const dbInstance = getFirestore(firebaseApp);
-                setAuth(authInstance);
-                setDb(dbInstance);
-
-                if (authToken) {
-                    await signInWithCustomToken(authInstance, authToken);
-                } else {
-                    await signInAnonymously(authInstance);
-                }
-
-                // Listen for auth state changes
-                onAuthStateChanged(authInstance, (user) => {
-                    if (user) {
-                        setUserId(user.uid);
-                    } else {
-                         setUserId(crypto.randomUUID());
-                    }
-                    setIsAuthReady(true);
-                });
-            } catch (e) {
-                console.error("Error initializing Firebase:", e);
-                showModal("Error al inicializar la base de datos.");
-            }
-        };
-        initFirebase();
-    }, []);
-
-    // Firestore data listener
-    useEffect(() => {
-        if (!isAuthReady || !userId || !db) return;
-
-        console.log("Setting up Firestore listener.");
-        // The collection path now includes the user ID for security
-        const songsColRef = collection(db, "artifacts", appId, "users", userId, "songs");
-
-        // Use onSnapshot to get real-time updates
-        const unsubscribe = onSnapshot(songsColRef, (snapshot) => {
-            console.log("Received data from Firestore.");
-            const fetchedSongs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Sort songs by title client-side to avoid Firestore index errors
-            fetchedSongs.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-            setSongs(fetchedSongs);
-        }, (error) => {
-            console.error("Error listening to Firestore:", error);
-            showModal("Error al cargar las canciones desde la base de datos.");
+        setEditingSong(null);
+      } else {
+        await apiCall('/songs', {
+          method: 'POST',
+          body: JSON.stringify(songForm),
         });
+      }
+      setSongForm({ title: '', artist: '', album: '', genre: '', lyrics: '', chords: '' });
+      fetchSongs();
+    } catch (error) {
+      alert(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // Clean up the listener on component unmount
-        return () => unsubscribe();
-    }, [isAuthReady, userId, db]);
+  const handleEditSong = (song) => {
+    setEditingSong(song);
+    setSongForm({
+      title: song.title,
+      artist: song.artist,
+      album: song.album || '',
+      genre: song.genre || '',
+      lyrics: song.lyrics || '',
+      chords: song.chords || '',
+    });
+  };
 
-    // Handlers for Firestore actions
-    const saveSong = async (songData, id = null) => {
-        if (!isAuthReady || !userId || !db) {
-            showModal("Error: La base de datos no está lista.");
-            return;
-        }
-        try {
-            const songDocRef = id ? doc(db, "artifacts", appId, "users", userId, "songs", id) : doc(collection(db, "artifacts", appId, "users", userId, "songs"));
-            await setDoc(songDocRef, songData);
-            showModal("Canción guardada exitosamente.");
-        } catch (e) {
-            console.error("Error saving song: ", e);
-            showModal("Error al guardar la canción.");
-        }
-    };
+  const handleDeleteSong = async (id) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar esta canción?')) return;
+    try {
+      await apiCall(`/songs/${id}`, { method: 'DELETE' });
+      fetchSongs();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
 
-    const deleteSong = async (id) => {
-        if (!isAuthReady || !userId || !db) {
-            showModal("Error: La base de datos no está lista.");
-            return;
-        }
-        try {
-            await deleteDoc(doc(db, "artifacts", appId, "users", userId, "songs", id));
-            showModal("Canción eliminada exitosamente.");
-        } catch (e) {
-            console.error("Error deleting song: ", e);
-            showModal("Error al eliminar la canción.");
-        }
-    };
+  const handleLogout = () => {
+    setUser(null);
+    setToken(null);
+    setSongs([]);
+    localStorage.removeItem('token');
+  };
 
-    // Component for the song list view
-    const SongList = () => {
-        const [searchTerm, setSearchTerm] = useState('');
-        const [selectedGenre, setSelectedGenre] = useState('');
-
-        const genres = [...new Set(songs.map(song => song.genre).filter(Boolean))];
-
-        const filteredSongs = songs.filter(song => {
-            const matchesSearch = (song.title?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                                  (song.artist?.toLowerCase() || '').includes(searchTerm.toLowerCase());
-            const matchesGenre = selectedGenre ? song.genre === selectedGenre : true;
-            return matchesSearch && matchesGenre;
-        });
-
-        return (
-            <div className="w-full max-w-4xl p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-colors duration-300">
-                <h1 className="text-3xl font-bold mb-4 text-center">MusiNotes</h1>
-                <div className="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    <input
-                        type="text"
-                        placeholder="Buscar por título o artista..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full sm:w-2/3 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                    />
-                    <select
-                        value={selectedGenre}
-                        onChange={(e) => setSelectedGenre(e.target.value)}
-                        className="w-full sm:w-1/3 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
-                    >
-                        <option value="">Todos los géneros</option>
-                        {genres.map(genre => <option key={genre} value={genre}>{genre}</option>)}
-                    </select>
-                </div>
-                <button
-                    onClick={() => { setView('add'); setCurrentSong(null); }}
-                    className="w-full px-6 py-3 mb-6 bg-purple-600 text-white rounded-full font-bold hover:bg-purple-700 transition-colors duration-300 transform hover:scale-105"
-                >
-                    Agregar Nueva Canción
-                </button>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredSongs.length > 0 ? filteredSongs.map(song => (
-                        <div key={song.id} className="bg-gray-50 dark:bg-gray-700 p-4 rounded-xl shadow-md transition-transform transform hover:scale-105">
-                            <h3 className="text-xl font-semibold">{song.title}</h3>
-                            <p className="text-gray-600 dark:text-gray-300">Artista: {song.artist}</p>
-                            {song.album && <p className="text-gray-600 dark:text-gray-300">Álbum: {song.album}</p>}
-                            {song.genre && <p className="text-gray-600 dark:text-gray-300">Género: {song.genre}</p>}
-                            <div className="flex justify-end mt-4 space-x-2">
-                                <button
-                                    onClick={() => { setView('view'); setCurrentSong(song); }}
-                                    className="bg-purple-500 text-white px-3 py-1 rounded-full text-sm hover:bg-purple-600 transition-colors duration-300"
-                                >
-                                    Ver
-                                </button>
-                                <button
-                                    onClick={() => { setView('edit'); setCurrentSong(song); }}
-                                    className="bg-blue-500 text-white px-3 py-1 rounded-full text-sm hover:bg-blue-600 transition-colors duration-300"
-                                >
-                                    Editar
-                                </button>
-                                <button
-                                    onClick={() => showModal("¿Estás seguro de que quieres eliminar esta canción?", true, () => deleteSong(song.id))}
-                                    className="bg-red-500 text-white px-3 py-1 rounded-full text-sm hover:bg-red-600 transition-colors duration-300"
-                                >
-                                    Eliminar
-                                </button>
-                            </div>
-                        </div>
-                    )) : (
-                        <p className="text-center text-gray-500 mt-8 col-span-full">No se encontraron canciones.</p>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    // Component for the song form view
-    const SongForm = () => {
-        const [title, setTitle] = useState(currentSong?.title || '');
-        const [artist, setArtist] = useState(currentSong?.artist || '');
-        const [album, setAlbum] = useState(currentSong?.album || '');
-        const [genre, setGenre] = useState(currentSong?.genre || '');
-        const [lyrics, setLyrics] = useState(currentSong?.lyrics || '');
-        const [chords, setChords] = useState(currentSong?.chords || '');
-
-        const handleSubmit = (e) => {
-            e.preventDefault();
-            if (!title || !artist) {
-                showModal("El título y el artista son campos obligatorios.");
-                return;
-            }
-            const songData = { title, artist, album, genre, lyrics, chords };
-            saveSong(songData, currentSong?.id);
-        };
-
-        return (
-            <div className="w-full max-w-4xl p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-colors duration-300">
-                <h1 className="text-3xl font-bold mb-6 text-center">{currentSong ? 'Editar Canción' : 'Agregar Nueva Canción'}</h1>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Título</label>
-                        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Artista</label>
-                        <input type="text" value={artist} onChange={(e) => setArtist(e.target.value)} className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Álbum</label>
-                        <input type="text" value={album} onChange={(e) => setAlbum(e.target.value)} className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Género</label>
-                        <input type="text" value={genre} onChange={(e) => setGenre(e.target.value)} className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Letra</label>
-                        <textarea rows="5" value={lyrics} onChange={(e) => setLyrics(e.target.value)} className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"></textarea>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Acordes</label>
-                        <textarea rows="5" value={chords} onChange={(e) => setChords(e.target.value)} className="w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"></textarea>
-                    </div>
-                    <div className="flex justify-between mt-6">
-                        <button type="submit" className="px-6 py-3 bg-green-500 text-white rounded-full font-bold hover:bg-green-600 transition-colors duration-300">
-                            Guardar Canción
-                        </button>
-                        <button type="button" onClick={() => setView('list')} className="px-6 py-3 bg-gray-500 text-white rounded-full font-bold hover:bg-gray-600 transition-colors duration-300">
-                            Cancelar
-                        </button>
-                    </div>
-                </form>
-            </div>
-        );
-    };
-
-    // New component for individual song view
-    const SongView = () => {
-        if (!currentSong) {
-            return (
-                <div className="text-center text-gray-500 mt-8">
-                    No se seleccionó ninguna canción.
-                    <button
-                        onClick={() => setView('list')}
-                        className="mt-4 px-6 py-3 bg-purple-600 text-white rounded-full font-bold hover:bg-purple-700 transition-colors duration-300"
-                    >
-                        Volver a la lista
-                    </button>
-                </div>
-            );
-        }
-
-        const formatText = (text) => {
-            return text ? text.split('\n').map((line, index) => <p key={index}>{line}</p>) : null;
-        };
-
-        return (
-            <div className="w-full max-w-4xl p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-colors duration-300">
-                <div className="flex justify-between items-start mb-6">
-                    <button
-                        onClick={() => setView('list')}
-                        className="bg-gray-500 text-white px-4 py-2 rounded-full font-bold hover:bg-gray-600 transition-colors duration-300"
-                    >
-                        &lt; Volver
-                    </button>
-                    <div className="text-right">
-                        <h1 className="text-4xl font-bold">{currentSong.title}</h1>
-                        <h2 className="text-xl text-gray-600 dark:text-gray-300">{currentSong.artist}</h2>
-                        {currentSong.album && <p className="text-sm text-gray-500 dark:text-gray-400">Álbum: {currentSong.album}</p>}
-                        {currentSong.genre && <p className="text-sm text-gray-500 dark:text-gray-400">Género: {currentSong.genre}</p>}
-                    </div>
-                </div>
-
-                <div className="mt-8 p-4 bg-gray-100 dark:bg-gray-700 rounded-xl">
-                    <h3 className="text-2xl font-semibold mb-2">Letra</h3>
-                    <div className="whitespace-pre-wrap text-lg text-gray-800 dark:text-gray-200">{formatText(currentSong.lyrics)}</div>
-                </div>
-
-                <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-xl">
-                    <h3 className="text-2xl font-semibold mb-2">Acordes</h3>
-                    <div className="whitespace-pre-wrap text-lg text-gray-800 dark:text-gray-200">{formatText(currentSong.chords)}</div>
-                </div>
-            </div>
-        );
-    };
-
-    const renderView = () => {
-        switch (view) {
-            case 'list':
-                return <SongList />;
-            case 'add':
-                return <SongForm />;
-            case 'edit':
-                return <SongForm />;
-            case 'view':
-                return <SongView />;
-            default:
-                return <SongList />;
-        }
-    };
-
+  if (!user) {
     return (
-        <div className="flex flex-col items-center w-full min-h-screen p-4 bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300 font-sans">
-            <Modal {...modal} onClose={() => setModal({ ...modal, show: false })} />
-            {isAuthReady && userId && (
-                <div className="p-2 bg-gray-200 dark:bg-gray-700 text-sm rounded-lg text-center mb-4">
-                    Tu ID de usuario: {userId}
-                </div>
-            )}
-            {renderView()}
+      <div className="bg-gray-900 min-h-screen text-gray-200 p-8 font-sans">
+        <div className="max-w-md mx-auto">
+          <div className="bg-gray-800 p-6 rounded-2xl shadow-lg">
+            <h1 className="text-4xl font-bold text-center text-green-400 mb-6">MusiNotes</h1>
+            <div className="flex justify-center mb-6">
+              <button
+                onClick={() => setIsLogin(true)}
+                className={`px-4 py-2 rounded-l-xl ${isLogin ? 'bg-green-600' : 'bg-gray-700'}`}
+              >
+                Iniciar Sesión
+              </button>
+              <button
+                onClick={() => setIsLogin(false)}
+                className={`px-4 py-2 rounded-r-xl ${!isLogin ? 'bg-green-600' : 'bg-gray-700'}`}
+              >
+                Registrarse
+              </button>
+            </div>
+            <form onSubmit={handleAuth} className="space-y-4">
+              {!isLogin && (
+                <input
+                  type="text"
+                  placeholder="Nombre de usuario"
+                  value={authForm.username}
+                  onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
+                  className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                  required
+                />
+              )}
+              <input
+                type="email"
+                placeholder="Correo electrónico"
+                value={authForm.email}
+                onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Contraseña"
+                value={authForm.password}
+                onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                required
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50"
+              >
+                {loading ? 'Cargando...' : (isLogin ? 'Iniciar Sesión' : 'Registrarse')}
+              </button>
+            </form>
+          </div>
         </div>
+      </div>
     );
+  }
+
+  return (
+    <div className="bg-gray-900 min-h-screen text-gray-200 p-8 font-sans">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold text-green-400">MusiNotes</h1>
+              <p className="text-gray-400">¡Tus canciones musicales!</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-400">Usuario: {user.username}</p>
+              <button
+                onClick={handleLogout}
+                className="mt-2 bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700"
+              >
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
+          <h2 className="text-2xl font-semibold text-white mb-4">
+            {editingSong ? 'Editar Canción' : 'Agregar Nueva Canción'}
+          </h2>
+          <form onSubmit={handleSongSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input
+                type="text"
+                placeholder="Título"
+                value={songForm.title}
+                onChange={(e) => setSongForm({ ...songForm, title: e.target.value })}
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Artista"
+                value={songForm.artist}
+                onChange={(e) => setSongForm({ ...songForm, artist: e.target.value })}
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Álbum"
+                value={songForm.album}
+                onChange={(e) => setSongForm({ ...songForm, album: e.target.value })}
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+              />
+              <input
+                type="text"
+                placeholder="Género"
+                value={songForm.genre}
+                onChange={(e) => setSongForm({ ...songForm, genre: e.target.value })}
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+              />
+            </div>
+            <textarea
+              placeholder="Letras"
+              value={songForm.lyrics}
+              onChange={(e) => setSongForm({ ...songForm, lyrics: e.target.value })}
+              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 h-32"
+            />
+            <textarea
+              placeholder="Acordes (JSON array)"
+              value={songForm.chords}
+              onChange={(e) => setSongForm({ ...songForm, chords: e.target.value })}
+              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 h-32"
+            />
+            <div className="flex gap-4">
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-green-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50"
+              >
+                {loading ? 'Guardando...' : (editingSong ? 'Actualizar' : 'Guardar')}
+              </button>
+              {editingSong && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingSong(null);
+                    setSongForm({ title: '', artist: '', album: '', genre: '', lyrics: '', chords: '' });
+                  }}
+                  className="bg-gray-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-gray-700"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg">
+          <h2 className="text-2xl font-semibold text-white mb-4">Mis Canciones</h2>
+          {songs.length === 0 ? (
+            <p className="text-gray-400">Todavía no tienes canciones. ¡Agrega la primera!</p>
+          ) : (
+            <div className="space-y-4">
+              {songs.map((song) => (
+                <div key={song.song_id} className="bg-gray-700 p-4 rounded-xl shadow-inner border border-gray-600">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="text-xl font-semibold text-white">{song.title}</h3>
+                      <p className="text-gray-300">{song.artist} {song.album && `- ${song.album}`}</p>
+                      {song.genre && <p className="text-sm text-gray-400">{song.genre}</p>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditSong(song)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSong(song.song_id)}
+                        className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                  {song.lyrics && (
+                    <div className="mt-4">
+                      <h4 className="text-lg font-medium text-gray-200 mb-2">Letras:</h4>
+                      <pre className="text-gray-300 whitespace-pre-wrap">{song.lyrics}</pre>
+                    </div>
+                  )}
+                  {song.chords && (
+                    <div className="mt-4">
+                      <h4 className="text-lg font-medium text-gray-200 mb-2">Acordes:</h4>
+                      <pre className="text-gray-300">{song.chords}</pre>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default App;
