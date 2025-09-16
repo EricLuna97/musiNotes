@@ -1,163 +1,133 @@
 const express = require('express');
-const mysql = require('mysql');
-const jwt = require('jsonwebtoken');
-const bodyParser = require('body-parser');
+const path = require('path');
 const cors = require('cors');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const pool = require('./db');
+require('dotenv').config();
 
 const app = express();
 const port = 3001;
 
+// Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
 
-// Clave secreta para JWT
-const jwtSecret = 'tu_clave_secreta_aqui';
+// JWT Authentication Middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Access token required' });
 
-// Configuración de la conexión a la base de datos
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: '',
-  database: 'music_notes'
-});
-
-db.connect(err => {
-  if (err) {
-    console.error('Error conectando a la base de datos:', err);
-    return;
-  }
-  console.log('Conexión a la base de datos MySQL exitosa.');
-});
-
-// Middleware para verificar el token JWT
-const authenticateJWT = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
-    jwt.verify(token, jwtSecret, (err, user) => {
-      if (err) {
-        return res.status(403).json({ error: 'Token inválido' });
-      }
-      req.user = user;
-      next();
-    });
-  } else {
-    res.status(401).json({ error: 'Autenticación necesaria' });
-  }
+  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+    if (err) return res.status(403).json({ error: 'Invalid token' });
+    req.user = user;
+    next();
+  });
 };
 
-// Endpoint de login
-app.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  const sql = 'SELECT id, email, password FROM users WHERE email = ?';
-  db.query(sql, [email], (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error del servidor' });
-    }
-    if (results.length === 0) {
-      return res.status(401).json({ error: 'Usuario no encontrado' });
-    }
-    const user = results[0];
-    if (password === user.password) {
-      const token = jwt.sign({ id: user.id, email: user.email }, jwtSecret, { expiresIn: '1h' });
-      res.json({ token, id: user.id });
+// API Routes
+
+// User Registration
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const result = await pool.query(
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email',
+      [username, email, hashedPassword]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    if (error.code === '23505') {
+      res.status(400).json({ error: 'Username or email already exists' });
     } else {
-      res.status(401).json({ error: 'Contraseña incorrecta' });
+      res.status(500).json({ error: 'Server error' });
     }
-  });
-});
-
-// Endpoint para obtener canciones
-app.get('/songs/search', authenticateJWT, (req, res) => {
-  const { title, genre } = req.query;
-  const userId = req.user.id;
-  let sql = 'SELECT * FROM songs WHERE user_id = ?';
-  const params = [userId];
-
-  if (title) {
-    sql += ' AND title LIKE ?';
-    params.push(`%${title}%`);
   }
-  
-  if (genre) {
-    sql += ' AND genre = ?';
-    params.push(genre);
+});
+
+// User Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const result = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (result.rows.length === 0) return res.status(400).json({ error: 'User not found' });
+
+    const user = result.rows[0];
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) return res.status(400).json({ error: 'Invalid password' });
+
+    const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET);
+    res.json({ token, user: { id: user.id, username: user.username, email: user.email } });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
   }
-
-  db.query(sql, params, (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error del servidor' });
-    }
-    res.json(results);
-  });
 });
 
-// Endpoint para agregar una nueva canción
-app.post('/songs', authenticateJWT, (req, res) => {
-  const { title, artist, album, genre } = req.body;
-  const userId = req.user.id;
-  const sql = 'INSERT INTO songs (title, artist, album, genre, user_id) VALUES (?, ?, ?, ?, ?)';
-  db.query(sql, [title, artist, album, genre, userId], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error del servidor' });
-    }
-    res.status(201).json({ message: 'Canción agregada con éxito', id: result.insertId });
-  });
+// Get all songs for authenticated user
+app.get('/api/songs', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM songs WHERE user_id = $1 ORDER BY created_at DESC', [req.user.id]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// Endpoint para obtener una canción por su ID
-app.get('/songs/:id', authenticateJWT, (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
-  const sql = 'SELECT * FROM songs WHERE song_id = ? AND user_id = ?';
-  db.query(sql, [id, userId], (err, results) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error del servidor' });
-    }
-    if (results.length === 0) {
-      return res.status(404).json({ error: 'Canción no encontrada o no tienes permiso para verla' });
-    }
-    res.json(results[0]);
-  });
+// Create a new song
+app.post('/api/songs', authenticateToken, async (req, res) => {
+  try {
+    const { title, artist, album, genre, lyrics, chords } = req.body;
+    const result = await pool.query(
+      'INSERT INTO songs (title, artist, album, genre, lyrics, chords, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [title, artist, album, genre, lyrics, chords, req.user.id]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// Endpoint para actualizar una canción
-app.put('/songs/:id', authenticateJWT, (req, res) => {
-  const { id } = req.params;
-  const { title, artist, album } = req.body;
-  const userId = req.user.id;
-
-  const sql = 'UPDATE songs SET title = ?, artist = ?, album = ? WHERE song_id = ? AND user_id = ?';
-  db.query(sql, [title, artist, album, id, userId], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error del servidor' });
-    }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Canción no encontrada o no tienes permiso para editarla' });
-    }
-    res.json({ message: 'Canción actualizada con éxito' });
-  });
+// Update a song
+app.put('/api/songs/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, artist, album, genre, lyrics, chords } = req.body;
+    const result = await pool.query(
+      'UPDATE songs SET title = $1, artist = $2, album = $3, genre = $4, lyrics = $5, chords = $6 WHERE song_id = $7 AND user_id = $8 RETURNING *',
+      [title, artist, album, genre, lyrics, chords, id, req.user.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Song not found' });
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// NUEVO: Endpoint para eliminar una canción (Paso 50 y 51)
-app.delete('/songs/:id', authenticateJWT, (req, res) => {
-  const { id } = req.params;
-  const userId = req.user.id;
+// Delete a song
+app.delete('/api/songs/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query('DELETE FROM songs WHERE song_id = $1 AND user_id = $2 RETURNING *', [id, req.user.id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Song not found' });
+    res.json({ message: 'Song deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
-  const sql = 'DELETE FROM songs WHERE song_id = ? AND user_id = ?';
-  db.query(sql, [id, userId], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: 'Error del servidor' });
-    }
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Canción no encontrada o no tienes permiso para eliminarla' });
-    }
-    res.json({ message: 'Canción eliminada con éxito' });
-  });
+// Servir los archivos estáticos de la aplicación de React
+const frontendBuildPath = path.join(__dirname, '..', 'frontend', 'build');
+app.use(express.static(frontendBuildPath));
+
+// Para aplicaciones de una sola página, redirigir todas las rutas a index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendBuildPath, 'index.html'));
 });
 
 // Iniciar el servidor
 app.listen(port, () => {
-  console.log(`Servidor backend corriendo en http://localhost:${port}`);
+    console.log(`Servidor de MusiNotes corriendo en http://localhost:${port}`);
+    console.log("Visita esta URL en tu navegador para ver la aplicación.");
 });
