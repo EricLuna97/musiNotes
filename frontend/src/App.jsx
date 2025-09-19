@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-// API base URL
-const API_BASE = 'http://localhost:3001/api';
+// API base URL - use environment variable or fallback
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 // Main App Component
 const App = () => {
@@ -15,6 +15,8 @@ const App = () => {
     title: '', artist: '', album: '', genre: '', lyrics: '', chords: ''
   });
   const [editingSong, setEditingSong] = useState(null);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
 
   // Check if user is logged in on mount
   useEffect(() => {
@@ -23,36 +25,53 @@ const App = () => {
     }
   }, [token]);
 
-  // API calls
+  // API calls with better error handling
   const apiCall = async (endpoint, options = {}) => {
-    const config = {
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      ...options,
-    };
-    const response = await fetch(`${API_BASE}${endpoint}`, config);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'API error');
-    return data;
+    try {
+      const config = {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        ...options,
+      };
+
+      const response = await fetch(`${API_BASE}${endpoint}`, config);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        throw new Error('Network error: Unable to connect to server');
+      }
+      throw error;
+    }
   };
 
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+    setSuccess('');
+
     try {
       const endpoint = isLogin ? '/auth/login' : '/auth/register';
       const { token: newToken, user: userData } = await apiCall(endpoint, {
         method: 'POST',
         body: JSON.stringify(authForm),
       });
+
       setToken(newToken);
       setUser(userData);
       localStorage.setItem('token', newToken);
       setAuthForm({ username: '', email: '', password: '' });
+      setSuccess(isLogin ? 'Login successful!' : 'Registration successful!');
     } catch (error) {
-      alert(error.message);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -70,6 +89,34 @@ const App = () => {
   const handleSongSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
+    setSuccess('');
+
+    // Basic frontend validation
+    if (!songForm.title.trim() || !songForm.artist.trim()) {
+      setError('Title and artist are required');
+      setLoading(false);
+      return;
+    }
+
+    if (songForm.title.length > 255 || songForm.artist.length > 255) {
+      setError('Title and artist must be less than 255 characters');
+      setLoading(false);
+      return;
+    }
+
+    if (songForm.lyrics && songForm.lyrics.length > 10000) {
+      setError('Lyrics must be less than 10,000 characters');
+      setLoading(false);
+      return;
+    }
+
+    if (songForm.chords && songForm.chords.length > 5000) {
+      setError('Chords must be less than 5,000 characters');
+      setLoading(false);
+      return;
+    }
+
     try {
       if (editingSong) {
         await apiCall(`/songs/${editingSong.song_id}`, {
@@ -77,16 +124,18 @@ const App = () => {
           body: JSON.stringify(songForm),
         });
         setEditingSong(null);
+        setSuccess('Song updated successfully!');
       } else {
         await apiCall('/songs', {
           method: 'POST',
           body: JSON.stringify(songForm),
         });
+        setSuccess('Song created successfully!');
       }
       setSongForm({ title: '', artist: '', album: '', genre: '', lyrics: '', chords: '' });
       fetchSongs();
     } catch (error) {
-      alert(error.message);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
@@ -106,11 +155,16 @@ const App = () => {
 
   const handleDeleteSong = async (id) => {
     if (!confirm('¿Estás seguro de que quieres eliminar esta canción?')) return;
+
+    setError('');
+    setSuccess('');
+
     try {
       await apiCall(`/songs/${id}`, { method: 'DELETE' });
+      setSuccess('Song deleted successfully!');
       fetchSongs();
     } catch (error) {
-      alert(error.message);
+      setError(error.message);
     }
   };
 
@@ -142,14 +196,28 @@ const App = () => {
               </button>
             </div>
             <form onSubmit={handleAuth} className="space-y-4">
+              {error && (
+                <div className="bg-red-600 text-white p-3 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
+              {success && (
+                <div className="bg-green-600 text-white p-3 rounded-xl text-sm">
+                  {success}
+                </div>
+              )}
               {!isLogin && (
                 <input
                   type="text"
                   placeholder="Nombre de usuario"
                   value={authForm.username}
                   onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
-                  className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                  className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                   required
+                  minLength="3"
+                  maxLength="50"
+                  pattern="[a-zA-Z0-9_]+"
+                  title="Only letters, numbers, and underscores allowed"
                 />
               )}
               <input
@@ -157,7 +225,7 @@ const App = () => {
                 placeholder="Correo electrónico"
                 value={authForm.email}
                 onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
               />
               <input
@@ -165,13 +233,15 @@ const App = () => {
                 placeholder="Contraseña"
                 value={authForm.password}
                 onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
+                minLength="8"
+                title="Password must be at least 8 characters"
               />
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50"
+                className="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 transition duration-300"
               >
                 {loading ? 'Cargando...' : (isLogin ? 'Iniciar Sesión' : 'Registrarse')}
               </button>
@@ -204,6 +274,16 @@ const App = () => {
         </div>
 
         <div className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
+          {error && (
+            <div className="bg-red-600 text-white p-3 rounded-xl text-sm mb-4">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="bg-green-600 text-white p-3 rounded-xl text-sm mb-4">
+              {success}
+            </div>
+          )}
           <h2 className="text-2xl font-semibold text-white mb-4">
             {editingSong ? 'Editar Canción' : 'Agregar Nueva Canción'}
           </h2>
@@ -214,43 +294,51 @@ const App = () => {
                 placeholder="Título"
                 value={songForm.title}
                 onChange={(e) => setSongForm({ ...songForm, title: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
+                minLength="1"
+                maxLength="255"
               />
               <input
                 type="text"
                 placeholder="Artista"
                 value={songForm.artist}
                 onChange={(e) => setSongForm({ ...songForm, artist: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
+                minLength="1"
+                maxLength="255"
               />
               <input
                 type="text"
                 placeholder="Álbum"
                 value={songForm.album}
                 onChange={(e) => setSongForm({ ...songForm, album: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                maxLength="255"
               />
               <input
                 type="text"
                 placeholder="Género"
                 value={songForm.genre}
                 onChange={(e) => setSongForm({ ...songForm, genre: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400"
+                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                maxLength="255"
               />
             </div>
             <textarea
               placeholder="Letras"
               value={songForm.lyrics}
               onChange={(e) => setSongForm({ ...songForm, lyrics: e.target.value })}
-              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 h-32"
+              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-green-500"
+              maxLength="10000"
             />
             <textarea
               placeholder="Acordes (JSON array)"
               value={songForm.chords}
               onChange={(e) => setSongForm({ ...songForm, chords: e.target.value })}
-              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 h-32"
+              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-green-500"
+              maxLength="5000"
             />
             <div className="flex gap-4">
               <button
