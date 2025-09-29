@@ -4,6 +4,10 @@ const pool = require('./db');
 
 const initDb = async () => {
   try {
+    // Drop existing tables
+    await pool.query('DROP TABLE IF EXISTS songs CASCADE');
+    await pool.query('DROP TABLE IF EXISTS users CASCADE');
+
     const schemaPath = path.join(__dirname, 'database', 'schema.sql');
     const schema = fs.readFileSync(schemaPath, 'utf8');
 
