@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Dashboard from './pages/Dashboard';
 import SongForm from './pages/SongForm';
 import SongsList from './pages/SongsList';
-import InteractiveSheetMusic from "./components/InteractiveSheetMusic";
 
 // API base URL - use environment variable or fallback
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -161,13 +160,13 @@ const App = () => {
                           onClick={() => setIsLogin(true)}
                           className={`px-4 py-2 rounded-l-xl ${isLogin ? 'bg-green-600' : 'bg-gray-700'}`}
                         >
-                          Iniciar Sesión
+                          Login
                         </button>
                         <button
                           onClick={() => setIsLogin(false)}
                           className={`px-4 py-2 rounded-r-xl ${!isLogin ? 'bg-green-600' : 'bg-gray-700'}`}
                         >
-                          Registrarse
+                          Register
                         </button>
                       </div>
                       <form onSubmit={handleAuth} className="space-y-4">
@@ -184,7 +183,7 @@ const App = () => {
                         {!isLogin && (
                           <input
                             type="text"
-                            placeholder="Nombre de usuario"
+                            placeholder="Username"
                             value={authForm.username}
                             onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
                             className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -197,7 +196,7 @@ const App = () => {
                         )}
                         <input
                           type="email"
-                          placeholder="Correo electrónico"
+                          placeholder="Email"
                           value={authForm.email}
                           onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
                           className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -205,7 +204,7 @@ const App = () => {
                         />
                         <input
                           type="password"
-                          placeholder="Contraseña"
+                          placeholder="Password"
                           value={authForm.password}
                           onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
                           className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -218,7 +217,7 @@ const App = () => {
                           disabled={loading}
                           className="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 transition duration-300"
                         >
-                          {loading ? 'Cargando...' : (isLogin ? 'Iniciar Sesión' : 'Registrarse')}
+                          {loading ? 'Loading...' : (isLogin ? 'Login' : 'Register')}
                         </button>
                         {isLogin && (
                           <>
@@ -227,7 +226,7 @@ const App = () => {
                                 onClick={handleGoogleLogin}
                                 className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition duration-300"
                               >
-                                Iniciar Sesión con Google
+                                Login with Google
                               </button>
                             </div>
                             <div className="mt-4 text-center">
@@ -235,7 +234,7 @@ const App = () => {
                                 onClick={() => setShowForgotPassword(true)}
                                 className="text-green-400 hover:text-green-300 text-sm"
                               >
-                                ¿Ha olvidado su contraseña?
+                                Forgot your password?
                               </button>
                             </div>
                           </>
@@ -243,11 +242,11 @@ const App = () => {
                       </form>
                       {showForgotPassword && (
                         <div className="mt-6 bg-gray-700 p-4 rounded-xl">
-                          <h3 className="text-lg font-semibold text-white mb-4">Restablecer Contraseña</h3>
+                          <h3 className="text-lg font-semibold text-white mb-4">Reset Password</h3>
                           <form onSubmit={handleForgotPassword}>
                             <input
                               type="email"
-                              placeholder="Correo electrónico"
+                              placeholder="Email"
                               value={forgotPasswordEmail}
                               onChange={(e) => setForgotPasswordEmail(e.target.value)}
                               className="w-full p-3 rounded-xl bg-gray-600 border border-gray-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
@@ -259,14 +258,14 @@ const App = () => {
                                 disabled={loading}
                                 className="flex-1 bg-green-600 text-white py-2 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50"
                               >
-                                {loading ? 'Enviando...' : 'Enviar'}
+                                {loading ? 'Sending...' : 'Send'}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setShowForgotPassword(false)}
                                 className="flex-1 bg-gray-600 text-white py-2 rounded-xl font-bold hover:bg-gray-700"
                               >
-                                Cancelar
+                                Cancel
                               </button>
                             </div>
                           </form>
@@ -332,16 +331,6 @@ const App = () => {
                   setError={setError}
                   setSuccess={setSuccess}
                 />
-              ) : (
-                <Navigate to="/" replace />
-              )
-            }
-          />
-          <Route
-            path="/sheetmusic"
-            element={
-              user ? (
-                <InteractiveSheetMusic />
               ) : (
                 <Navigate to="/" replace />
               )

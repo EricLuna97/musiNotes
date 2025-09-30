@@ -62,7 +62,7 @@ const Dashboard = ({ user, token, handleLogout }) => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-4xl font-bold text-green-400">MusiNotes</h1>
-              <p className="text-gray-400">¡Tus canciones musicales!</p>
+              <p className="text-gray-400">Your musical songs!</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-400">Usuario: {user.username}</p>
@@ -77,49 +77,41 @@ const Dashboard = ({ user, token, handleLogout }) => {
                   onClick={handleLogout}
                   className="bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700"
                 >
-                  Cerrar Sesión
+                  Logout
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Link
             to="/songs/new"
             className="bg-gray-800 p-6 rounded-2xl shadow-lg hover:bg-gray-700 transition duration-300"
           >
-            <h2 className="text-2xl font-semibold text-white mb-4">Crear Nueva Canción</h2>
-            <p className="text-gray-400">Agrega una nueva canción con acordes y letras</p>
-            <div className="mt-4 text-green-400 font-semibold">→ Ir a Crear</div>
+            <h2 className="text-2xl font-semibold text-white mb-4">Create New Song</h2>
+            <p className="text-gray-400">Add a new song with chords and lyrics</p>
+            <div className="mt-4 text-green-400 font-semibold">→ Go to Create</div>
           </Link>
 
           <Link
             to="/songs"
             className="bg-gray-800 p-6 rounded-2xl shadow-lg hover:bg-gray-700 transition duration-300"
           >
-            <h2 className="text-2xl font-semibold text-white mb-4">Mis Canciones</h2>
-            <p className="text-gray-400">Ver, buscar y gestionar tus canciones</p>
-            <div className="mt-4 text-green-400 font-semibold">→ Ver Canciones</div>
+            <h2 className="text-2xl font-semibold text-white mb-4">My Songs</h2>
+            <p className="text-gray-400">View, search and manage your songs</p>
+            <div className="mt-4 text-green-400 font-semibold">→ View Songs</div>
           </Link>
 
-          <Link
-            to="/sheetmusic"
-            className="bg-gray-800 p-6 rounded-2xl shadow-lg hover:bg-gray-700 transition duration-300"
-          >
-            <h2 className="text-2xl font-semibold text-white mb-4">Compositor de Partituras</h2>
-            <p className="text-gray-400">Crea y edita partituras musicales</p>
-            <div className="mt-4 text-green-400 font-semibold">→ Ir al Compositor</div>
-          </Link>
         </div>
 
         {/* Delete Account Modal */}
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-gray-800 p-6 rounded-2xl shadow-lg max-w-md w-full mx-4">
-              <h2 className="text-2xl font-semibold text-white mb-4">Eliminar Cuenta</h2>
+              <h2 className="text-2xl font-semibold text-white mb-4">Delete Account</h2>
               <p className="text-gray-300 mb-4">
-                Esta acción no se puede deshacer. Se eliminarán permanentemente tu cuenta y todas tus canciones.
+                This action cannot be undone. Your account and all your songs will be permanently deleted.
               </p>
               {deleteError && (
                 <div className="bg-red-600 text-white p-3 rounded-xl text-sm mb-4">
@@ -129,7 +121,7 @@ const Dashboard = ({ user, token, handleLogout }) => {
               <form onSubmit={handleDeleteAccount}>
                 <input
                   type="password"
-                  placeholder="Ingresa tu contraseña para confirmar"
+                  placeholder="Enter your password to confirm"
                   value={deletePassword}
                   onChange={(e) => setDeletePassword(e.target.value)}
                   className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
@@ -141,7 +133,7 @@ const Dashboard = ({ user, token, handleLogout }) => {
                     disabled={deleteLoading}
                     className="flex-1 bg-red-700 text-white py-3 rounded-xl font-bold hover:bg-red-800 disabled:opacity-50"
                   >
-                    {deleteLoading ? 'Eliminando...' : 'Eliminar Cuenta'}
+                    {deleteLoading ? 'Deleting...' : 'Delete Account'}
                   </button>
                   <button
                     type="button"
@@ -152,7 +144,7 @@ const Dashboard = ({ user, token, handleLogout }) => {
                     }}
                     className="flex-1 bg-gray-600 text-white py-3 rounded-xl font-bold hover:bg-gray-700"
                   >
-                    Cancelar
+                    Cancel
                   </button>
                 </div>
               </form>

@@ -62,7 +62,7 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
   }, [searchTerm, filterGenre, sortBy, sortOrder]);
 
   const handleDeleteSong = async (id) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta canción?')) return;
+    if (!confirm('Are you sure you want to delete this song?')) return;
 
     setError('');
     setSuccess('');
@@ -117,7 +117,7 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
                 to="/songs/new"
                 className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700"
               >
-                + Nueva Canción
+                + New Song
               </Link>
               <Link
                 to="/dashboard"
@@ -130,18 +130,18 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
         </div>
 
         <div className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
-          <h2 className="text-2xl font-semibold text-white mb-4">Buscar y Filtrar Canciones</h2>
+          <h2 className="text-2xl font-semibold text-white mb-4">Search and Filter Songs</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <input
               type="text"
-              placeholder="Buscar por título, artista, álbum o letras..."
+              placeholder="Search by title, artist, album or lyrics..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
             <input
               type="text"
-              placeholder="Filtrar por género"
+              placeholder="Filter by genre"
               value={filterGenre}
               onChange={(e) => setFilterGenre(e.target.value)}
               className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -151,32 +151,32 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
               onChange={(e) => setSortBy(e.target.value)}
               className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              <option value="created_at">Fecha</option>
-              <option value="title">Título</option>
-              <option value="artist">Artista</option>
-              <option value="genre">Género</option>
+              <option value="created_at">Date</option>
+              <option value="title">Title</option>
+              <option value="artist">Artist</option>
+              <option value="genre">Genre</option>
             </select>
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
               className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
             >
-              <option value="DESC">Descendente</option>
-              <option value="ASC">Ascendente</option>
+              <option value="DESC">Descending</option>
+              <option value="ASC">Ascending</option>
             </select>
           </div>
         </div>
 
         <div className="bg-gray-800 p-6 rounded-2xl shadow-lg">
-          <h2 className="text-2xl font-semibold text-white mb-4">Mis Canciones</h2>
+          <h2 className="text-2xl font-semibold text-white mb-4">My Songs</h2>
           {songs.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-400 mb-4">Todavía no tienes canciones. ¡Agrega la primera!</p>
+              <p className="text-gray-400 mb-4">You don't have any songs yet. Add the first one!</p>
               <Link
                 to="/songs/new"
                 className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700"
               >
-                Crear Primera Canción
+                Create First Song
               </Link>
             </div>
           ) : (
@@ -194,7 +194,7 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
                         to={`/songs/${song.song_id}/edit`}
                         className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
                       >
-                        Editar
+                        Edit
                       </Link>
                       <button
                         onClick={() => handleDownloadPDF(song.song_id, song.title)}
@@ -206,13 +206,13 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
                         onClick={() => handleDeleteSong(song.song_id)}
                         className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
                       >
-                        Eliminar
+                        Delete
                       </button>
                     </div>
                   </div>
                   {song.lyrics && (
                     <div className="mt-4">
-                      <h4 className="text-lg font-medium text-gray-200 mb-2">Letras:</h4>
+                      <h4 className="text-lg font-medium text-gray-200 mb-2">Lyrics:</h4>
                       <pre className="text-gray-300 whitespace-pre-wrap">{song.lyrics}</pre>
                     </div>
                   )}

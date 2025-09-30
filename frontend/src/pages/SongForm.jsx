@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import LyricsEditor from '../components/LyricsEditor';
+import SongPreview from '../components/SongPreview';
+import { parseLyricsWithChords } from '../utils/parseLyrics';
 
 // API base URL - use environment variable or fallback
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -9,7 +12,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [songForm, setSongForm] = useState({
-    title: '', artist: '', album: '', genre: '', lyrics: ''
+    title: '', artist: '', album: '', genre: '', lyrics: '', chords: ''
   });
   const [editingSong, setEditingSong] = useState(null);
 
@@ -67,6 +70,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
         album: data.album || '',
         genre: data.genre || '',
         lyrics: data.lyrics || '',
+        chords: data.chords || '',
       });
     } catch (error) {
       console.error('Error fetching song:', error);
@@ -130,13 +134,13 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-green-400">MusiNotes</h1>
-              <p className="text-gray-400">Usuario: {user.username}</p>
+              <p className="text-gray-400">User: {user.username}</p>
             </div>
             <button
               onClick={() => navigate('/dashboard')}
               className="bg-gray-600 text-white px-4 py-2 rounded-xl hover:bg-gray-700"
             >
-              ← Volver al Dashboard
+              ← Back to Dashboard
             </button>
           </div>
         </div>
@@ -153,13 +157,13 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
             </div>
           )}
           <h2 className="text-2xl font-semibold text-white mb-4">
-            {editingSong ? 'Editar Canción' : 'Crear Nueva Canción'}
+            {editingSong ? 'Edit Song' : 'Create New Song'}
           </h2>
           <form onSubmit={handleSongSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 type="text"
-                placeholder="Título"
+                placeholder="Title"
                 value={songForm.title}
                 onChange={(e) => setSongForm({ ...songForm, title: e.target.value })}
                 className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -169,7 +173,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
               />
               <input
                 type="text"
-                placeholder="Artista"
+                placeholder="Artist"
                 value={songForm.artist}
                 onChange={(e) => setSongForm({ ...songForm, artist: e.target.value })}
                 className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -179,7 +183,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
               />
               <input
                 type="text"
-                placeholder="Álbum"
+                placeholder="Album"
                 value={songForm.album}
                 onChange={(e) => setSongForm({ ...songForm, album: e.target.value })}
                 className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -187,34 +191,77 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
               />
               <input
                 type="text"
-                placeholder="Género"
+                placeholder="Genre"
                 value={songForm.genre}
                 onChange={(e) => setSongForm({ ...songForm, genre: e.target.value })}
                 className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
                 maxLength="255"
               />
             </div>
-            <textarea
-              placeholder="Letras"
-              value={songForm.lyrics}
-              onChange={(e) => setSongForm({ ...songForm, lyrics: e.target.value })}
-              className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 h-32 focus:outline-none focus:ring-2 focus:ring-green-500"
-              maxLength="10000"
+            {/* Lyrics Editor */}
+            <LyricsEditor
+              lyrics={songForm.lyrics}
+              chords={songForm.chords}
+              onLyricsChange={(lyrics) => setSongForm({ ...songForm, lyrics })}
+              onChordsChange={(chords) => setSongForm({ ...songForm, chords })}
             />
-            <div className="flex gap-4">
+
+            {/* Song Preview */}
+            <div className="mt-6">
+              <SongPreview
+                title={songForm.title}
+                artist={songForm.artist}
+                album={songForm.album}
+                genre={songForm.genre}
+                lyrics={songForm.lyrics}
+                chords={songForm.chords}
+              />
+            </div>
+            <div className="flex gap-4 flex-wrap">
               <button
                 type="submit"
                 disabled={loading}
                 className="bg-green-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50"
               >
-                {loading ? 'Guardando...' : (editingSong ? 'Actualizar' : 'Guardar')}
+                {loading ? 'Saving...' : (editingSong ? 'Update' : 'Save')}
               </button>
+              {editingSong && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => window.open(`${API_BASE}/songs/${editingSong.song_id}/pdf`, '_blank')}
+                    className="bg-blue-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-blue-700"
+                  >
+                    📄 Export PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const parsed = parseLyricsWithChords(songForm.lyrics);
+                      const exportText = parsed.map(line => `${line.chordsLine}\n${line.lyricsLine}`).join("\n");
+                      const content = `${songForm.title}\nBy ${songForm.artist}\n\n${exportText}`;
+                      const blob = new Blob([content], { type: 'text/plain' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `${songForm.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                      URL.revokeObjectURL(url);
+                    }}
+                    className="bg-purple-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-purple-700"
+                  >
+                    📝 Export TXT
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => navigate('/songs')}
                 className="bg-gray-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-gray-700"
               >
-                Cancelar
+                Cancel
               </button>
             </div>
           </form>

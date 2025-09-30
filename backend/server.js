@@ -493,7 +493,7 @@ app.get('/api/songs/:id', authenticateToken, async (req, res) => {
     logger.info('Fetching single song', { songId: id, userId: req.user.id });
 
     const result = await pool.query(
-      'SELECT song_id, title, artist, album, genre, lyrics, created_at FROM songs WHERE song_id = $1 AND user_id = $2',
+      'SELECT song_id, title, artist, album, genre, lyrics, chords, created_at FROM songs WHERE song_id = $1 AND user_id = $2',
       [id, req.user.id]
     );
 
@@ -522,7 +522,7 @@ app.get('/api/songs', authenticateToken, async (req, res) => {
 
     const { search, genre, sort = 'created_at', order = 'DESC' } = req.query;
 
-    let query = 'SELECT song_id, title, artist, album, genre, lyrics, created_at FROM songs WHERE user_id = $1';
+    let query = 'SELECT song_id, title, artist, album, genre, lyrics, chords, created_at FROM songs WHERE user_id = $1';
     let params = [req.user.id];
     let paramIndex = 2;
 
@@ -593,6 +593,10 @@ app.post('/api/songs', authenticateToken, [
     .optional()
     .isLength({ max: 10000 })
     .withMessage('Lyrics must be less than 10,000 characters'),
+  body('chords')
+    .optional()
+    .isLength({ max: 10000 })
+    .withMessage('Chords must be less than 10,000 characters'),
 ], handleValidationErrors, async (req, res) => {
   try {
     const { title, artist, album, genre, lyrics, chords } = req.body;
@@ -604,8 +608,8 @@ app.post('/api/songs', authenticateToken, [
     });
 
     const result = await pool.query(
-      'INSERT INTO songs (title, artist, album, genre, lyrics, user_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-      [title.trim(), artist.trim(), album?.trim() || null, genre?.trim() || null, lyrics?.trim() || null, req.user.id]
+      'INSERT INTO songs (title, artist, album, genre, lyrics, chords, user_id) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [title.trim(), artist.trim(), album?.trim() || null, genre?.trim() || null, lyrics?.trim() || null, chords?.trim() || null, req.user.id]
     );
 
     logger.info('Song created successfully', {
@@ -650,6 +654,10 @@ app.put('/api/songs/:id', authenticateToken, [
     .optional()
     .isLength({ max: 10000 })
     .withMessage('Lyrics must be less than 10,000 characters'),
+  body('chords')
+    .optional()
+    .isLength({ max: 10000 })
+    .withMessage('Chords must be less than 10,000 characters'),
 ], handleValidationErrors, async (req, res) => {
   try {
     const { id } = req.params;
@@ -668,8 +676,8 @@ app.put('/api/songs/:id', authenticateToken, [
     });
 
     const result = await pool.query(
-      'UPDATE songs SET title = $1, artist = $2, album = $3, genre = $4, lyrics = $5 WHERE song_id = $6 AND user_id = $7 RETURNING *',
-      [title?.trim(), artist?.trim(), album?.trim() || null, genre?.trim() || null, lyrics?.trim() || null, id, req.user.id]
+      'UPDATE songs SET title = $1, artist = $2, album = $3, genre = $4, lyrics = $5, chords = $6 WHERE song_id = $7 AND user_id = $8 RETURNING *',
+      [title?.trim(), artist?.trim(), album?.trim() || null, genre?.trim() || null, lyrics?.trim() || null, chords?.trim() || null, id, req.user.id]
     );
 
     if (result.rows.length === 0) {
@@ -773,6 +781,16 @@ app.get('/api/songs/:id/pdf', authenticateToken, async (req, res) => {
       doc.fontSize(16).text('Lyrics:', { underline: true });
       doc.moveDown();
       doc.fontSize(12).text(song.lyrics, {
+        align: 'left',
+        lineGap: 5
+      });
+      doc.moveDown();
+    }
+
+    if (song.chords) {
+      doc.fontSize(16).text('Chords:', { underline: true });
+      doc.moveDown();
+      doc.fontSize(12).text(song.chords, {
         align: 'left',
         lineGap: 5
       });
