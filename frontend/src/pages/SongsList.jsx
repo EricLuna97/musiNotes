@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import Header from '../components/Header';
 
 // API base URL - use environment variable or fallback
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -104,30 +105,32 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="card p-8 mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-primary">MusiNotes</h1>
-              <p className="text-neutral-light mt-2">User: {user.username}</p>
-            </div>
-            <div className="flex gap-4">
-              <Link
-                to="/songs/new"
-                className="btn-primary"
-              >
-                + New Song
-              </Link>
-              <Link
-                to="/dashboard"
-                className="bg-neutral-dark bg-opacity-40 text-neutral-light px-6 py-3 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
-              >
-                ← Dashboard
-              </Link>
+    <div className="min-h-screen">
+      <Header user={user} handleLogout={() => {}} />
+      <div className="p-8">
+        <div className="max-w-6xl mx-auto">
+          <div className="card p-8 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-dark">My Songs</h1>
+                <p className="text-neutral-light mt-1">Manage your musical collection</p>
+              </div>
+              <div className="flex gap-4">
+                <Link
+                  to="/songs/new"
+                  className="btn-primary"
+                >
+                  + New Song
+                </Link>
+                <Link
+                  to="/dashboard"
+                  className="bg-neutral-dark bg-opacity-40 text-neutral-light px-6 py-3 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
+                >
+                  ← Dashboard
+                </Link>
+              </div>
             </div>
           </div>
-        </div>
 
         <div className="card p-8 mb-8">
           <h2 className="text-2xl font-semibold text-techno-light mb-6">Search and Filter Songs</h2>
@@ -220,6 +223,7 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>

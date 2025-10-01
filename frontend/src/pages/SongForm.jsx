@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import Header from '../components/Header';
 import LyricsEditor from '../components/LyricsEditor';
 import SongPreview from '../components/SongPreview';
 import { parseLyricsWithChords } from '../utils/parseLyrics';
@@ -128,22 +129,24 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
 
 
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="card p-8 mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-primary">MusiNotes</h1>
-              <p className="text-neutral-light mt-2">User: {user.username}</p>
+    <div className="min-h-screen">
+      <Header user={user} handleLogout={() => {}} />
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="card p-8 mb-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-2xl font-bold text-dark">{editingSong ? 'Edit Song' : 'Create New Song'}</h1>
+                <p className="text-neutral-light mt-1">Add your musical creation</p>
+              </div>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="bg-neutral-dark bg-opacity-40 text-neutral-light px-6 py-3 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
+              >
+                ← Back to Dashboard
+              </button>
             </div>
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="bg-neutral-dark bg-opacity-40 text-neutral-light px-6 py-3 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
-            >
-              ← Back to Dashboard
-            </button>
           </div>
-        </div>
 
         <div className="card p-8">
           {error && (
@@ -265,6 +268,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
               </button>
             </div>
           </form>
+        </div>
         </div>
       </div>
     </div>

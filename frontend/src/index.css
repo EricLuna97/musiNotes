@@ -11,7 +11,9 @@
 
   body {
     margin: 0;
-    background-color: #121212;
+    background: linear-gradient(135deg, #8e2de2 0%, #4a00e0 25%, #000000 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
     color: #ffffff;
     font-family: 'Inter', 'Poppins', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;

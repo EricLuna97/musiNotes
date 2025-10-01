@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import Header from '../components/Header';
 
 // API base URL - use environment variable or fallback
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -56,40 +57,23 @@ const Dashboard = ({ user, token, handleLogout }) => {
     }
   };
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="card p-8 mb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl font-bold text-primary">MusiNotes</h1>
-              <p className="text-neutral-light mt-2">Your musical songs!</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-neutral-light">User: {user.username}</p>
-              <div className="flex gap-3 mt-4">
-                <button
-                  onClick={() => setShowDeleteModal(true)}
-                  className="bg-error text-techno-light px-4 py-2 rounded-xl font-medium hover:bg-opacity-80 transition-all duration-200"
-                >
-                  Delete Account
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="bg-neutral-dark bg-opacity-40 text-neutral-light px-4 py-2 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
-                >
-                  Logout
-                </button>
-              </div>
+    <div className="min-h-screen">
+      <Header user={user} handleLogout={handleLogout} />
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="card p-8 mb-8">
+            <div className="text-center">
+              <h1 className="text-6xl font-bold text-black mb-2">MusiNotes</h1>
+              <p className="text-neutral-light">Your songs</p>
             </div>
           </div>
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <Link
             to="/songs/new"
             className="card p-8 hover:bg-opacity-20 transition-all duration-300 group"
           >
-            <h2 className="text-2xl font-semibold text-techno-light mb-4 group-hover:text-primary transition-colors duration-200">Create New Song</h2>
+            <h2 className="text-2xl font-semibold text-dark mb-4 group-hover:text-primary transition-colors duration-200">Create New Song</h2>
             <p className="text-neutral-light mb-6">Add a new song with chords and lyrics</p>
             <div className="text-primary font-medium flex items-center">
               → Go to Create
@@ -101,13 +85,23 @@ const Dashboard = ({ user, token, handleLogout }) => {
             to="/songs"
             className="card p-8 hover:bg-opacity-20 transition-all duration-300 group"
           >
-            <h2 className="text-2xl font-semibold text-techno-light mb-4 group-hover:text-primary transition-colors duration-200">My Songs</h2>
+            <h2 className="text-2xl font-semibold text-dark mb-4 group-hover:text-primary transition-colors duration-200">My Songs</h2>
             <p className="text-neutral-light mb-6">View, search and manage your songs</p>
             <div className="text-primary font-medium flex items-center">
               → View Songs
               <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">→</span>
             </div>
           </Link>
+        </div>
+
+        {/* Delete Account - Less prominent at bottom */}
+        <div className="mt-16 text-center">
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="text-neutral-light text-sm hover:text-error transition-colors duration-200 underline decoration-neutral-dark hover:decoration-error"
+          >
+            Delete Account
+          </button>
         </div>
 
         {/* Delete Account Modal */}
@@ -156,6 +150,7 @@ const Dashboard = ({ user, token, handleLogout }) => {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -1,0 +1,12 @@
+<svg width="160" height="40" viewBox="0 0 160 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Text -->
+  <text x="0" y="20" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#ffffff">
+    musi
+  </text>
+  <text x="0" y="38" font-family="Inter, sans-serif" font-size="24" font-weight="700" fill="#6C63FF">
+    Notes
+  </text>
+
+  <!-- Decorative line -->
+  <line x1="0" y1="42" x2="160" y2="42" stroke="#9d4edd" stroke-width="1" opacity="0.5"/>
+</svg>
