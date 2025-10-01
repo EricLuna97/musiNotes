@@ -104,24 +104,24 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
   };
 
   return (
-    <div className="bg-gray-900 min-h-screen text-gray-200 p-8 font-sans">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
+        <div className="card p-8 mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-green-400">MusiNotes</h1>
-              <p className="text-gray-400">Usuario: {user.username}</p>
+              <h1 className="text-4xl font-bold text-primary">MusiNotes</h1>
+              <p className="text-neutral-light mt-2">User: {user.username}</p>
             </div>
             <div className="flex gap-4">
               <Link
                 to="/songs/new"
-                className="bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700"
+                className="btn-primary"
               >
                 + New Song
               </Link>
               <Link
                 to="/dashboard"
-                className="bg-gray-600 text-white px-4 py-2 rounded-xl hover:bg-gray-700"
+                className="bg-neutral-dark bg-opacity-40 text-neutral-light px-6 py-3 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
               >
                 ← Dashboard
               </Link>
@@ -129,27 +129,27 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
           </div>
         </div>
 
-        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
-          <h2 className="text-2xl font-semibold text-white mb-4">Search and Filter Songs</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div className="card p-8 mb-8">
+          <h2 className="text-2xl font-semibold text-techno-light mb-6">Search and Filter Songs</h2>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <input
               type="text"
               placeholder="Search by title, artist, album or lyrics..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="input-field"
             />
             <input
               type="text"
               placeholder="Filter by genre"
               value={filterGenre}
               onChange={(e) => setFilterGenre(e.target.value)}
-              className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="input-field"
             />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="input-field"
             >
               <option value="created_at">Date</option>
               <option value="title">Title</option>
@@ -159,7 +159,7 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
-              className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="input-field"
             >
               <option value="DESC">Descending</option>
               <option value="ASC">Ascending</option>
@@ -167,53 +167,53 @@ const SongsList = ({ token, user, setError, setSuccess }) => {
           </div>
         </div>
 
-        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg">
-          <h2 className="text-2xl font-semibold text-white mb-4">My Songs</h2>
+        <div className="card p-8">
+          <h2 className="text-2xl font-semibold text-techno-light mb-6">My Songs</h2>
           {songs.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-400 mb-4">You don't have any songs yet. Add the first one!</p>
+            <div className="text-center py-12">
+              <p className="text-neutral-light mb-6 text-lg">You don't have any songs yet. Add the first one!</p>
               <Link
                 to="/songs/new"
-                className="bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700"
+                className="btn-primary"
               >
                 Create First Song
               </Link>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-6">
               {songs.map((song) => (
-                <div key={song.song_id} className="bg-gray-700 p-4 rounded-xl shadow-inner border border-gray-600">
-                  <div className="flex justify-between items-start mb-2">
+                <div key={song.song_id} className="card p-6">
+                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="text-xl font-semibold text-white">{song.title}</h3>
-                      <p className="text-gray-300">{song.artist} {song.album && `- ${song.album}`}</p>
-                      {song.genre && <p className="text-sm text-gray-400">{song.genre}</p>}
+                      <h3 className="text-xl font-semibold text-techno-light mb-2">{song.title}</h3>
+                      <p className="text-neutral-light">{song.artist} {song.album && `- ${song.album}`}</p>
+                      {song.genre && <p className="text-sm text-neutral-dark mt-1">{song.genre}</p>}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       <Link
                         to={`/songs/${song.song_id}/edit`}
-                        className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        className="bg-secondary text-techno-light px-4 py-2 rounded-xl font-medium hover:bg-opacity-80 transition-all duration-200"
                       >
                         Edit
                       </Link>
                       <button
                         onClick={() => handleDownloadPDF(song.song_id, song.title)}
-                        className="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700"
+                        className="bg-primary text-techno-light px-4 py-2 rounded-xl font-medium hover:bg-primary-dark transition-all duration-200"
                       >
                         PDF
                       </button>
                       <button
                         onClick={() => handleDeleteSong(song.song_id)}
-                        className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                        className="bg-error text-techno-light px-4 py-2 rounded-xl font-medium hover:bg-opacity-80 transition-all duration-200"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
                   {song.lyrics && (
-                    <div className="mt-4">
-                      <h4 className="text-lg font-medium text-gray-200 mb-2">Lyrics:</h4>
-                      <pre className="text-gray-300 whitespace-pre-wrap">{song.lyrics}</pre>
+                    <div className="mt-6">
+                      <h4 className="text-lg font-medium text-techno-light mb-3">Lyrics:</h4>
+                      <pre className="text-neutral-light whitespace-pre-wrap leading-relaxed">{song.lyrics}</pre>
                     </div>
                   )}
                 </div>

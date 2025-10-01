@@ -37,18 +37,18 @@ const ChordPalette = ({ onChordSelect }) => {
   ];
 
   return (
-    <div className="bg-gray-800 p-4 rounded-xl shadow-lg">
-      <h3 className="text-lg font-semibold text-white mb-4">🎹 Chord Palette</h3>
-      <div className="space-y-3">
+    <div className="card p-6">
+      <h3 className="text-lg font-semibold text-techno-light mb-6">🎹 Chord Palette</h3>
+      <div className="space-y-4">
         {chordGroups.map((group) => (
           <div key={group.name}>
-            <h4 className="text-sm font-medium text-gray-300 mb-2">{group.name}</h4>
+            <h4 className="text-sm font-medium text-neutral-light mb-3">{group.name}</h4>
             <div className="flex flex-wrap gap-2">
               {group.chords.map((chord) => (
                 <button
                   key={chord}
                   onClick={() => onChordSelect(chord)}
-                  className="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-200 text-sm font-medium"
+                  className="px-3 py-2 bg-primary text-techno-light rounded-xl hover:bg-primary-dark transition-all duration-200 text-sm font-medium"
                   title={`Insert ${chord} chord`}
                 >
                   {chord}

@@ -1,12 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  html {
+    font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+  }
+
+  body {
+    margin: 0;
+    background-color: #121212;
+    color: #ffffff;
+    font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-techno-light px-6 py-3 rounded-xl font-medium transition-all duration-200 hover:bg-primary-dark focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50;
+  }
+
+  .card {
+    @apply bg-neutral-dark bg-opacity-10 backdrop-blur-sm rounded-xl shadow-soft border border-neutral-dark border-opacity-20;
+  }
+
+  .input-field {
+    @apply bg-neutral-dark bg-opacity-20 border border-neutral-light border-opacity-30 rounded-xl px-4 py-3 text-techno-light placeholder-neutral-light focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200;
+  }
+
+  .nav-link {
+    @apply text-techno-light hover:text-primary transition-colors duration-200;
+  }
 }

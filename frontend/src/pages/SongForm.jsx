@@ -128,45 +128,45 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
 
 
   return (
-    <div className="bg-gray-900 min-h-screen text-gray-200 p-8 font-sans">
+    <div className="min-h-screen bg-background p-8">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg mb-6">
+        <div className="card p-8 mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold text-green-400">MusiNotes</h1>
-              <p className="text-gray-400">User: {user.username}</p>
+              <h1 className="text-4xl font-bold text-primary">MusiNotes</h1>
+              <p className="text-neutral-light mt-2">User: {user.username}</p>
             </div>
             <button
               onClick={() => navigate('/dashboard')}
-              className="bg-gray-600 text-white px-4 py-2 rounded-xl hover:bg-gray-700"
+              className="bg-neutral-dark bg-opacity-40 text-neutral-light px-6 py-3 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
             >
               ← Back to Dashboard
             </button>
           </div>
         </div>
 
-        <div className="bg-gray-800 p-6 rounded-2xl shadow-lg">
+        <div className="card p-8">
           {error && (
-            <div className="bg-red-600 text-white p-3 rounded-xl text-sm mb-4">
+            <div className="bg-error bg-opacity-20 border border-error border-opacity-30 text-error p-4 rounded-xl text-sm font-medium mb-6">
               {error}
             </div>
           )}
           {success && (
-            <div className="bg-green-600 text-white p-3 rounded-xl text-sm mb-4">
+            <div className="bg-success bg-opacity-20 border border-success border-opacity-30 text-success p-4 rounded-xl text-sm font-medium mb-6">
               {success}
             </div>
           )}
-          <h2 className="text-2xl font-semibold text-white mb-4">
+          <h2 className="text-2xl font-semibold text-techno-light mb-8">
             {editingSong ? 'Edit Song' : 'Create New Song'}
           </h2>
-          <form onSubmit={handleSongSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSongSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <input
                 type="text"
                 placeholder="Title"
                 value={songForm.title}
                 onChange={(e) => setSongForm({ ...songForm, title: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="input-field"
                 required
                 minLength="1"
                 maxLength="255"
@@ -176,7 +176,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
                 placeholder="Artist"
                 value={songForm.artist}
                 onChange={(e) => setSongForm({ ...songForm, artist: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="input-field"
                 required
                 minLength="1"
                 maxLength="255"
@@ -186,7 +186,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
                 placeholder="Album"
                 value={songForm.album}
                 onChange={(e) => setSongForm({ ...songForm, album: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="input-field"
                 maxLength="255"
               />
               <input
@@ -194,7 +194,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
                 placeholder="Genre"
                 value={songForm.genre}
                 onChange={(e) => setSongForm({ ...songForm, genre: e.target.value })}
-                className="p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="input-field"
                 maxLength="255"
               />
             </div>
@@ -221,7 +221,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="bg-green-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50"
+                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Saving...' : (editingSong ? 'Update' : 'Save')}
               </button>
@@ -230,7 +230,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
                   <button
                     type="button"
                     onClick={() => window.open(`${API_BASE}/songs/${editingSong.song_id}/pdf`, '_blank')}
-                    className="bg-blue-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-blue-700"
+                    className="bg-secondary text-techno-light py-3 px-6 rounded-xl font-medium hover:bg-opacity-80 transition-all duration-200"
                   >
                     📄 Export PDF
                   </button>
@@ -250,7 +250,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
                       document.body.removeChild(a);
                       URL.revokeObjectURL(url);
                     }}
-                    className="bg-purple-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-purple-700"
+                    className="bg-primary text-techno-light py-3 px-6 rounded-xl font-medium hover:bg-primary-dark transition-all duration-200"
                   >
                     📝 Export TXT
                   </button>
@@ -259,7 +259,7 @@ const SongForm = ({ token, user, error, success, setError, setSuccess }) => {
               <button
                 type="button"
                 onClick={() => navigate('/songs')}
-                className="bg-gray-600 text-white py-3 px-6 rounded-xl font-bold hover:bg-gray-700"
+                className="bg-neutral-dark bg-opacity-40 text-neutral-light py-3 px-6 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
               >
                 Cancel
               </button>

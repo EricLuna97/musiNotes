@@ -151,32 +151,40 @@ const App = () => {
               user ? (
                 <Navigate to="/dashboard" replace />
               ) : (
-                <div className="bg-gray-900 min-h-screen text-gray-200 p-8 font-sans">
+                <div className="min-h-screen bg-background p-8">
                   <div className="max-w-md mx-auto">
-                    <div className="bg-gray-800 p-6 rounded-2xl shadow-lg">
-                      <h1 className="text-4xl font-bold text-center text-green-400 mb-6">MusiNotes</h1>
-                      <div className="flex justify-center mb-6">
+                    <div className="card p-8">
+                      <h1 className="text-4xl font-bold text-center text-primary mb-8">MusiNotes</h1>
+                      <div className="flex justify-center mb-8">
                         <button
                           onClick={() => setIsLogin(true)}
-                          className={`px-4 py-2 rounded-l-xl ${isLogin ? 'bg-green-600' : 'bg-gray-700'}`}
+                          className={`px-6 py-3 rounded-l-xl font-medium transition-all duration-200 ${
+                            isLogin
+                              ? 'bg-primary text-techno-light'
+                              : 'bg-neutral-dark bg-opacity-20 text-neutral-light hover:bg-opacity-30'
+                          }`}
                         >
                           Login
                         </button>
                         <button
                           onClick={() => setIsLogin(false)}
-                          className={`px-4 py-2 rounded-r-xl ${!isLogin ? 'bg-green-600' : 'bg-gray-700'}`}
+                          className={`px-6 py-3 rounded-r-xl font-medium transition-all duration-200 ${
+                            !isLogin
+                              ? 'bg-primary text-techno-light'
+                              : 'bg-neutral-dark bg-opacity-20 text-neutral-light hover:bg-opacity-30'
+                          }`}
                         >
                           Register
                         </button>
                       </div>
-                      <form onSubmit={handleAuth} className="space-y-4">
+                      <form onSubmit={handleAuth} className="space-y-6">
                         {error && (
-                          <div className="bg-red-600 text-white p-3 rounded-xl text-sm">
+                          <div className="bg-error bg-opacity-20 border border-error border-opacity-30 text-error p-4 rounded-xl text-sm font-medium">
                             {error}
                           </div>
                         )}
                         {success && (
-                          <div className="bg-green-600 text-white p-3 rounded-xl text-sm">
+                          <div className="bg-success bg-opacity-20 border border-success border-opacity-30 text-success p-4 rounded-xl text-sm font-medium">
                             {success}
                           </div>
                         )}
@@ -186,7 +194,7 @@ const App = () => {
                             placeholder="Username"
                             value={authForm.username}
                             onChange={(e) => setAuthForm({ ...authForm, username: e.target.value })}
-                            className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                            className="input-field w-full"
                             required
                             minLength="3"
                             maxLength="50"
@@ -199,7 +207,7 @@ const App = () => {
                           placeholder="Email"
                           value={authForm.email}
                           onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
-                          className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="input-field w-full"
                           required
                         />
                         <input
@@ -207,7 +215,7 @@ const App = () => {
                           placeholder="Password"
                           value={authForm.password}
                           onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
-                          className="w-full p-3 rounded-xl bg-gray-700 border border-gray-600 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500"
+                          className="input-field w-full"
                           required
                           minLength="8"
                           title="Password must be at least 8 characters"
@@ -215,24 +223,24 @@ const App = () => {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="w-full bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50 transition duration-300"
+                          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {loading ? 'Loading...' : (isLogin ? 'Login' : 'Register')}
                         </button>
                         {isLogin && (
                           <>
-                            <div className="mt-4 text-center">
+                            <div className="mt-6 text-center">
                               <button
                                 onClick={handleGoogleLogin}
-                                className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-700 transition duration-300"
+                                className="w-full bg-secondary text-techno-light py-3 rounded-xl font-medium hover:bg-opacity-80 transition-all duration-200"
                               >
                                 Login with Google
                               </button>
                             </div>
-                            <div className="mt-4 text-center">
+                            <div className="mt-6 text-center">
                               <button
                                 onClick={() => setShowForgotPassword(true)}
-                                className="text-green-400 hover:text-green-300 text-sm"
+                                className="text-primary hover:text-primary-dark text-sm font-medium transition-colors duration-200"
                               >
                                 Forgot your password?
                               </button>
@@ -241,29 +249,29 @@ const App = () => {
                         )}
                       </form>
                       {showForgotPassword && (
-                        <div className="mt-6 bg-gray-700 p-4 rounded-xl">
-                          <h3 className="text-lg font-semibold text-white mb-4">Reset Password</h3>
-                          <form onSubmit={handleForgotPassword}>
+                        <div className="mt-8 card p-6">
+                          <h3 className="text-xl font-semibold text-techno-light mb-6">Reset Password</h3>
+                          <form onSubmit={handleForgotPassword} className="space-y-4">
                             <input
                               type="email"
                               placeholder="Email"
                               value={forgotPasswordEmail}
                               onChange={(e) => setForgotPasswordEmail(e.target.value)}
-                              className="w-full p-3 rounded-xl bg-gray-600 border border-gray-500 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
+                              className="input-field w-full"
                               required
                             />
-                            <div className="flex gap-2">
+                            <div className="flex gap-3">
                               <button
                                 type="submit"
                                 disabled={loading}
-                                className="flex-1 bg-green-600 text-white py-2 rounded-xl font-bold hover:bg-green-700 disabled:opacity-50"
+                                className="flex-1 btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {loading ? 'Sending...' : 'Send'}
                               </button>
                               <button
                                 type="button"
                                 onClick={() => setShowForgotPassword(false)}
-                                className="flex-1 bg-gray-600 text-white py-2 rounded-xl font-bold hover:bg-gray-700"
+                                className="flex-1 bg-neutral-dark bg-opacity-40 text-neutral-light py-3 rounded-xl font-medium hover:bg-opacity-60 transition-all duration-200"
                               >
                                 Cancel
                               </button>
