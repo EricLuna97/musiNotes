@@ -47,10 +47,10 @@ A music notes application for creating and managing song lyrics with chords.
 
 ```env
 # Database Configuration
-DB_USER=postgres
+DB_USER=your_user
 DB_HOST=localhost
-DB_DATABASE=musiNotes
-DB_PASSWORD=your_postgres_password
+DB_DATABASE=your_database
+DB_PASSWORD=your_password
 DB_PORT=5432
 
 # JWT Configuration
