@@ -25,13 +25,55 @@ const App = () => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const urlToken = urlParams.get('token');
+    const urlError = urlParams.get('error');
+
+    if (urlError) {
+      setError('Google authentication failed. Please try again.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
+    }
+
     if (urlToken) {
       setToken(urlToken);
       localStorage.setItem('token', urlToken);
       // Clean up URL
       window.history.replaceState({}, document.title, window.location.pathname);
+
+      // Fetch user data with the new token
+      fetchUserData(urlToken);
     }
   }, []);
+
+  // Function to fetch user data (used for Google OAuth)
+  const fetchUserData = async (authToken) => {
+    try {
+      // Decode JWT to get user info (simple decode, not secure validation)
+      const payload = JSON.parse(atob(authToken.split('.')[1]));
+      setUser({
+        id: payload.id,
+        username: payload.username,
+        email: payload.email
+      });
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      // Fallback: try to get user data from API
+      try {
+        const response = await fetch(`${API_BASE}/songs?limit=1`, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (response.ok) {
+          // If API call succeeds, token is valid, but we don't have user data
+          // For now, just set a placeholder user - the dashboard will handle this
+          setUser({ id: 'unknown', username: 'User', email: 'user@example.com' });
+        }
+      } catch (apiError) {
+        console.error('Token validation failed:', apiError);
+        setError('Authentication failed. Please try logging in again.');
+        setToken(null);
+        localStorage.removeItem('token');
+      }
+    }
+  };
 
   // Clear success message after 3 seconds
   useEffect(() => {

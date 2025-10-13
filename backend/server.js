@@ -96,10 +96,35 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_ID !== 'YOUR_GOOGL
         result = await pool.query('SELECT * FROM users WHERE email = $1', [profile.emails[0].value]);
 
         if (result.rows.length === 0) {
-          // Create new user
+          // Create new user - generate unique username from email or display name
+          const emailUsername = profile.emails[0].value.split('@')[0];
+          let generatedUsername = profile.displayName ?
+            profile.displayName.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase() :
+            emailUsername.replace(/[^a-zA-Z0-9_]/g, '');
+
+          // Ensure username is not empty and handle duplicates
+          if (!generatedUsername) {
+            generatedUsername = `user_${Date.now()}`;
+          }
+
+          // Check if username exists and generate unique one
+          let usernameExists = true;
+          let finalUsername = generatedUsername;
+          let counter = 1;
+
+          while (usernameExists) {
+            const usernameCheck = await pool.query('SELECT id FROM users WHERE username = $1', [finalUsername]);
+            if (usernameCheck.rows.length === 0) {
+              usernameExists = false;
+            } else {
+              finalUsername = `${generatedUsername}_${counter}`;
+              counter++;
+            }
+          }
+
           const insertResult = await pool.query(
-            'INSERT INTO users (email, google_id) VALUES ($1, $2) RETURNING *',
-            [profile.emails[0].value, profile.id]
+            'INSERT INTO users (username, email, google_id) VALUES ($1, $2, $3) RETURNING *',
+            [finalUsername, profile.emails[0].value, profile.id]
           );
           return done(null, insertResult.rows[0]);
         } else {
@@ -122,9 +147,23 @@ passport.serializeUser((user, done) => {
 
 passport.deserializeUser(async (id, done) => {
   try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    // Validate that id is a number
+    const userId = parseInt(id, 10);
+    if (isNaN(userId)) {
+      return done(null, false);
+    }
+
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+
+    if (result.rows.length === 0) {
+      // User doesn't exist (e.g., account was deleted)
+      // Return false to clear the session
+      return done(null, false);
+    }
+
     done(null, result.rows[0]);
   } catch (error) {
+    logger.error('Deserialize user error', { error: error.message, userId: id });
     done(error, null);
   }
 });

@@ -61,6 +61,22 @@ const login = async (req, res) => {
     }
 
     const user = result.rows[0];
+
+    // Check if user is a Google OAuth user (no password)
+    if (user.google_id) {
+      logger.warn('Password login attempt for Google OAuth user', { userId: user.id, email, ip: req.ip });
+      return res.status(400).json({
+        error: 'This account uses Google authentication',
+        message: 'Please use "Login with Google" instead of password login'
+      });
+    }
+
+    // Check if user has a password (traditional registration)
+    if (!user.password_hash) {
+      logger.warn('Login attempt for user without password', { userId: user.id, email, ip: req.ip });
+      return res.status(400).json({ error: 'Invalid email or password' });
+    }
+
     const validPassword = await bcrypt.compare(password, user.password_hash);
 
     if (!validPassword) {
@@ -191,19 +207,31 @@ const deleteAccount = async (req, res) => {
 
     logger.info('Account deletion attempt', { userId: req.user.id, ip: req.ip });
 
-    // Verify password
-    const userResult = await pool.query('SELECT password_hash FROM users WHERE id = $1', [req.user.id]);
+    // Get user information
+    const userResult = await pool.query('SELECT password_hash, google_id FROM users WHERE id = $1', [req.user.id]);
 
     if (userResult.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
 
     const user = userResult.rows[0];
-    const validPassword = await bcrypt.compare(password, user.password_hash);
 
-    if (!validPassword) {
-      logger.warn('Account deletion attempt with invalid password', { userId: req.user.id, ip: req.ip });
-      return res.status(400).json({ error: 'Invalid password' });
+    // For Google OAuth users, skip password verification
+    if (user.google_id) {
+      logger.info('Account deletion for Google OAuth user (no password verification)', { userId: req.user.id, ip: req.ip });
+    } else {
+      // For traditional users, verify password
+      if (!user.password_hash) {
+        logger.warn('Account deletion attempt for user without password', { userId: req.user.id, ip: req.ip });
+        return res.status(400).json({ error: 'Account configuration error' });
+      }
+
+      const validPassword = await bcrypt.compare(password, user.password_hash);
+
+      if (!validPassword) {
+        logger.warn('Account deletion attempt with invalid password', { userId: req.user.id, ip: req.ip });
+        return res.status(400).json({ error: 'Invalid password' });
+      }
     }
 
     // Delete user (songs will be deleted due to CASCADE)
